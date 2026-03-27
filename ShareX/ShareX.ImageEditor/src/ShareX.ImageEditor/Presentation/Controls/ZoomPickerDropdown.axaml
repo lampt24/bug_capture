@@ -12,7 +12,7 @@
         <Button x:Name="DropdownButton"
                 Classes="editor-button"
                 Click="OnDropdownButtonClick"
-                Height="40"
+                Height="32"
                 MinWidth="80"
                 HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="*,Auto">

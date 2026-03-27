@@ -69,10 +69,14 @@ public class EditorInputController
         if (vm == null) return;
 
         var canvas = _view.FindControl<Canvas>("AnnotationCanvas") ?? sender as Canvas;
-        if (canvas == null) return;
-
         var props = e.GetCurrentPoint(canvas).Properties;
-        if (props.IsMiddleButtonPressed)
+        
+        // Panning is priority for Middle mouse, Right mouse, or Space+Left mouse
+        bool isPanningRequested = props.IsMiddleButtonPressed || 
+                                 (props.IsRightButtonPressed && vm.ActiveTool != EditorTool.Crop && vm.ActiveTool != EditorTool.CutOut) ||
+                                 (props.IsLeftButtonPressed && (e.KeyModifiers.HasFlag(KeyModifiers.Alt) || _view.IsSpacePressed));
+        
+        if (isPanningRequested)
         {
             _zoomController.OnScrollViewerPointerPressed(_view.FindControl<ScrollViewer>("CanvasScrollViewer"), e);
             return;

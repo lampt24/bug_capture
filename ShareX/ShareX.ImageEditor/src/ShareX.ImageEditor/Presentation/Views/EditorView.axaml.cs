@@ -153,7 +153,13 @@ namespace ShareX.ImageEditor.Presentation.Views
             AddHandler(DragDrop.DragOverEvent, OnDragOver);
 
             DataContextChanged += OnEditorDataContextChanged;
+
+            AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
+            AddHandler(KeyUpEvent, OnKeyUp, RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
         }
+
+        private bool _isSpacePressed;
+        public bool IsSpacePressed => _isSpacePressed;
 
         private void OnLayoutUpdated(object? sender, EventArgs e)
         {
@@ -163,6 +169,11 @@ namespace ShareX.ImageEditor.Presentation.Views
         private void OnCanvasScrollChanged(object? sender, ScrollChangedEventArgs e)
         {
             UpdateOverlayCanvasLayout();
+        }
+
+        private void OnScrollViewerPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+        {
+            _zoomController.OnPreviewPointerWheelChanged(sender, e);
         }
 
         private void UpdateOverlayCanvasLayout()
@@ -782,12 +793,20 @@ namespace ShareX.ImageEditor.Presentation.Views
             var overlayCanvas = this.FindControl<Canvas>("OverlayCanvas");
             if (annotationCanvas == null && overlayCanvas == null) return;
 
-            Cursor cursor = vm.ActiveTool switch
+            Cursor cursor;
+            if (_isSpacePressed)
             {
-                EditorTool.Select => ArrowCursor,
-                EditorTool.Crop or EditorTool.CutOut => CursorAssetLoader.GetCrosshairCursor(),
-                _ => CursorAssetLoader.GetCrosshairCursor() // Drawing tools (Rectangle, Ellipse, Pen, etc.)
-            };
+                cursor = CursorAssetLoader.GetOpenHandCursor();
+            }
+            else
+            {
+                cursor = vm.ActiveTool switch
+                {
+                    EditorTool.Select => ArrowCursor,
+                    EditorTool.Crop or EditorTool.CutOut => CursorAssetLoader.GetCrosshairCursor(),
+                    _ => CursorAssetLoader.GetCrosshairCursor() // Drawing tools (Rectangle, Ellipse, Pen, etc.)
+                };
+            }
 
             if (annotationCanvas != null)
             {
@@ -869,11 +888,11 @@ namespace ShareX.ImageEditor.Presentation.Views
             if (scrollViewer == null) return;
 
             // Force a small zoom first to ensure the layout engine doesn't expand to the raw image size
-            vm.Zoom = 0.1;
+            vm.Zoom = 0.05;
 
             if (scrollViewer.Viewport.Width > 0 && scrollViewer.Viewport.Height > 0)
             {
-                if (_zoomController.ZoomToWidth()) return;
+                if (_zoomController.ZoomToFit()) return;
             }
 
             void OnViewportChanged(object? s, EffectiveViewportChangedEventArgs e)
@@ -881,7 +900,7 @@ namespace ShareX.ImageEditor.Presentation.Views
                 if (scrollViewer.Viewport.Width > 0 && scrollViewer.Viewport.Height > 0)
                 {
                     scrollViewer.EffectiveViewportChanged -= OnViewportChanged;
-                    _zoomController.ZoomToWidth();
+                    _zoomController.ZoomToFit();
                 }
             }
 
@@ -972,6 +991,14 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
+            if (e.Key == Key.Space)
+            {
+                _isSpacePressed = true;
+                UpdateCursorForTool();
+                e.Handled = true;
+                return;
+            }
+
             // Skip shortcuts when the user is typing in a text field
             if (_parentWindow?.FocusManager?.GetFocusedElement() is TextBox) return;
 
@@ -1077,6 +1104,14 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void OnKeyUp(object? sender, KeyEventArgs e)
         {
+            if (e.Key == Key.Space)
+            {
+                _isSpacePressed = false;
+                UpdateCursorForTool();
+                e.Handled = true;
+                return;
+            }
+
             // Skip shortcuts when the user is typing in a text field
             if (_parentWindow?.FocusManager?.GetFocusedElement() is TextBox) return;
 

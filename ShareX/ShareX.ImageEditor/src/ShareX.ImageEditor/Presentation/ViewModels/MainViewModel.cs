@@ -62,6 +62,12 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
 
         [ObservableProperty]
         private bool _isDirty;
+        
+        [ObservableProperty]
+        private bool _isEditorMaximized;
+
+        [RelayCommand]
+        private void ToggleEditorMaximized() => IsEditorMaximized = !IsEditorMaximized;
 
         private bool _isSyncingFromCore;
         private bool _zoomToFitOnNextImageLoad;
@@ -905,7 +911,7 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
         // Static color palette for annotation toolbar
         public static string[] ColorPalette => new[]
         {
-            "#EF4444", "#F97316", "#EAB308", "#22C55E",
+            "#4FD1C5", "#EF4444", "#F97316", "#EAB308", "#22C55E",
             "#0EA5E9", "#6366F1", "#A855F7", "#EC4899",
             "#FFFFFF", "#000000", "#64748B", "#1E293B"
         };

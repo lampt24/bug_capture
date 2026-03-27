@@ -38,7 +38,7 @@
                      Placement="Pointer"
                      BorderBrush="{DynamicResource ShareX.Brush.Border}"
                      BorderThickness="1"
-                     CornerRadius="6"
+                     CornerRadius="0"
                      Padding="6,2"
                      Cursor="Arrow">
             <MenuItem Header="Undo" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z">
@@ -128,9 +128,7 @@
         </ContextMenu>
     </UserControl.Resources>
 
-    <ThemeVariantScope x:Name="EditorThemeScope"
-                       RequestedThemeVariant="{x:Static theming:ThemeManager.ShareXDark}">
-        <Grid RowDefinitions="*">
+    <Grid RowDefinitions="*">
 
         <!-- Row 0: Main Content Area with Preview and Sidebar (Background Layer) -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Background="{DynamicResource ShareX.Brush.Background.Main}">
@@ -352,7 +350,8 @@
                               ScrollChanged="OnCanvasScrollChanged"
                               PointerPressed="OnScrollViewerPointerPressed"
                               PointerMoved="OnScrollViewerPointerMoved"
-                              PointerReleased="OnScrollViewerPointerReleased">
+                              PointerReleased="OnScrollViewerPointerReleased"
+                              PointerWheelChanged="OnScrollViewerPointerWheelChanged">
                     <LayoutTransformControl HorizontalAlignment="Center" VerticalAlignment="Center">
                         <LayoutTransformControl.LayoutTransform>
                             <ScaleTransform ScaleX="{Binding Zoom}" ScaleY="{Binding Zoom}" />
@@ -492,22 +491,27 @@
                                 Classes.active="{Binding ActiveTool, Converter={StaticResource EqualsConverter}, ConverterParameter=Crop}"
                                 Command="{Binding SelectToolCommand}" CommandParameter="{x:Static models:EditorTool.Crop}"
                                 ToolTip.Tip="Crop (C)"
-                                FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="18" Content="{x:Static theming:EditorIcons.ToolCrop}"/>
+                                FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="12" Content="{x:Static theming:EditorIcons.ToolCrop}"/>
                         <Button Classes="editor-button toolbar-button" Width="40"
                                 Classes.active="{Binding ActiveTool, Converter={StaticResource EqualsConverter}, ConverterParameter=CutOut}"
                                 Command="{Binding SelectToolCommand}" CommandParameter="{x:Static models:EditorTool.CutOut}"
                                 ToolTip.Tip="Cut Out (U)"
-                                FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="18" Content="{x:Static theming:EditorIcons.ToolCutOut}"/>
-                        <Button Classes="editor-button toolbar-button" Width="40"
+                                FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="12" Content="{x:Static theming:EditorIcons.ToolCutOut}"/>
+                        <Button Classes="editor-button toolbar-button" Width="26"
+                                 Classes.active="{Binding $parent[views:EditorView].DataContext.IsEditorMaximized}"
+                                 Command="{Binding $parent[views:EditorView].DataContext.ToggleEditorMaximizedCommand}"
+                                 ToolTip.Tip="Toggle Fullscreen"
+                                 FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="12" Content="{x:Static theming:EditorIcons.ActionExpand}"/>
+                        <Button Classes="editor-button toolbar-button" Width="26"
                                 Classes.active="{Binding IsSettingsPanelOpen}"
                                 Command="{Binding ToggleSettingsPanelCommand}"
                                 ToolTip.Tip="Background"
-                                FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="18" Content="{x:Static theming:EditorIcons.PanelBackground}"/>
-                        <Button Classes="editor-button toolbar-button" Width="40"
+                                FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="12" Content="{x:Static theming:EditorIcons.PanelBackground}"/>
+                        <Button Classes="editor-button toolbar-button" Width="26"
                                 Classes.active="{Binding IsEffectsPanelOpen}"
                                 Command="{Binding ToggleEffectsPanelCommand}"
                                 ToolTip.Tip="Effects"
-                                FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="18" Content="{x:Static theming:EditorIcons.PanelEffects}"/>
+                                FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="12" Content="{x:Static theming:EditorIcons.PanelEffects}"/>
                     </StackPanel>
                 </controls:AnnotationToolbar.TopRowTrailingContent>
             </controls:AnnotationToolbar>
@@ -515,7 +519,7 @@
 
         <!-- Row 0: Export Actions Toolbar (Bottom Centered, Floating) -->
         <Border Grid.Row="0" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,0"
-                Padding="4" Background="{DynamicResource ShareX.Brush.Background.Toolbar}" BorderBrush="{DynamicResource ShareX.Brush.Border}" BorderThickness="1" CornerRadius="4,4,0,0"
+                Padding="4" Background="{DynamicResource ShareX.Brush.Background.Toolbar}" BorderBrush="{DynamicResource ShareX.Brush.Border}" BorderThickness="1" CornerRadius="0"
                 MaxWidth="{Binding Bounds.Width, RelativeSource={RelativeSource AncestorType=UserControl}}"
                 ClipToBounds="False">
             <StackPanel Orientation="Horizontal" Spacing="4" ClipToBounds="False">
@@ -524,72 +528,72 @@
                     SelectedZoom="{Binding Zoom}"
                     ZoomChanged="OnZoomChanged"
                     ZoomToFitRequested="OnZoomPickerZoomToFitRequested"
-                    Height="40"
+                    Height="32"
                     ToolTip.Tip="Zoom (Ctrl + Wheel)" ToolTip.Placement="Top" ToolTip.VerticalOffset="-5"/>
 
                 <!-- Separator -->
-                <Border Width="1" Height="38" Background="{DynamicResource ShareX.Brush.Separator}" Margin="4,0"/>
+                <Border Width="1" Height="30" Background="{DynamicResource ShareX.Brush.Separator}" Margin="4,0"/>
 
                 <!-- Task Mode Buttons -->
-                <Grid Width="90" Height="40" Margin="4,0,10,0" ClipToBounds="False" VerticalAlignment="Bottom"
+                <Grid Width="90" Height="32" Margin="4,0,10,0" ClipToBounds="False" VerticalAlignment="Bottom"
                       IsVisible="{Binding ShowTaskModeButtons}">
                     <!-- Cancel Button: Red Rectangle (Behind) -->
                     <Button Command="{Binding CancelCommand}"
                             Classes="task-mode-button danger"
                             BorderThickness="1"
-                            Height="40" VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                            Height="32" VerticalAlignment="Bottom" HorizontalAlignment="Right"
                             Width="55" Margin="0,0,0,0" Padding="27,0,10,0" CornerRadius="0,4,4,0"
                             ToolTip.Tip="Cancel (Esc)" ToolTip.Placement="Top" ToolTip.VerticalOffset="-5"
                             ZIndex="0">
                         <TextBlock Text="{x:Static theming:EditorIcons.ActionCancel}"
                                    FontFamily="{DynamicResource ShareX.FontFamily.Icon}"
-                                   FontSize="18" FontWeight="Normal"
+                                   FontSize="12" FontWeight="Normal"
                                    VerticalAlignment="Center"/>
                     </Button>
 
                     <!-- Continue Button: Big Green Circle (Front) -->
                     <Button Command="{Binding ContinueCommand}"
                             Classes="task-mode-button success"
-                            Width="56" Height="56" CornerRadius="28"
+                            Width="44" Height="44" CornerRadius="22"
                             BorderThickness="1"
                             HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                            Margin="0,0,0,-8"
+                            Margin="0,0,0,-6"
                             ToolTip.Tip="{Binding ContinueButtonTooltip}" ToolTip.Placement="Top" ToolTip.VerticalOffset="-5"
                             ZIndex="20">
                         <TextBlock Text="{x:Static theming:EditorIcons.ActionContinue}"
                                    FontFamily="{DynamicResource ShareX.FontFamily.Icon}"
-                                   FontSize="22" FontWeight="Normal"
+                                   FontSize="20" FontWeight="Normal"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                    Margin="4,0,0,0"/>
                     </Button>
                 </Grid>
 
-                <Button Classes="editor-button" Command="{Binding CopyCommand}" Width="40" Padding="0"
+                <Button Classes="editor-button" Command="{Binding CopyCommand}" Width="40" Height="32" Padding="0"
                         ToolTip.Tip="Copy image to clipboard (Ctrl+Shift+C)" ToolTip.Placement="Top" ToolTip.VerticalOffset="-5">
-                    <TextBlock Text="{x:Static theming:EditorIcons.ActionCopy}" FontSize="18" FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal"/>
+                    <TextBlock Text="{x:Static theming:EditorIcons.ActionCopy}" FontSize="12" FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal"/>
                 </Button>
 
-                <Button Classes="editor-button" Command="{Binding SaveCommand}" Width="40" Padding="0"
+                <Button Classes="editor-button" Command="{Binding SaveCommand}" Width="40" Height="32" Padding="0"
                         ToolTip.Tip="Save image (Ctrl+S)" ToolTip.Placement="Top" ToolTip.VerticalOffset="-5">
-                    <TextBlock Text="{x:Static theming:EditorIcons.ActionSave}" FontSize="18" FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal"/>
+                    <TextBlock Text="{x:Static theming:EditorIcons.ActionSave}" FontSize="12" FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal"/>
                 </Button>
 
                 <Button Classes="editor-button" Command="{Binding SaveAsCommand}" Width="40" Padding="0"
                         IsVisible="False"
                         ToolTip.Tip="Save image as... (Ctrl+Shift+S)" ToolTip.Placement="Top" ToolTip.VerticalOffset="-5">
-                    <TextBlock Text="{x:Static theming:EditorIcons.ActionSaveAs}" FontSize="18" FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal"/>
+                    <TextBlock Text="{x:Static theming:EditorIcons.ActionSaveAs}" FontSize="12" FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal"/>
                 </Button>
 
                 <Button Classes="editor-button" Command="{Binding PinToScreenCommand}" Width="40" Padding="0"
                         IsVisible="False"
                         ToolTip.Tip="Pin image to screen (Ctrl+P)" ToolTip.Placement="Top" ToolTip.VerticalOffset="-5">
-                    <TextBlock Text="{x:Static theming:EditorIcons.ActionPinToScreen}" FontSize="18" FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal"/>
+                    <TextBlock Text="{x:Static theming:EditorIcons.ActionPinToScreen}" FontSize="12" FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal"/>
                 </Button>
 
                 <Button Classes="editor-button" Command="{Binding UploadCommand}" Width="40" Padding="0"
                         IsVisible="False"
                         ToolTip.Tip="Upload image (Ctrl+U)" ToolTip.Placement="Top" ToolTip.VerticalOffset="-5">
-                    <TextBlock Text="{x:Static theming:EditorIcons.ActionUpload}" FontSize="18" FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal"/>
+                    <TextBlock Text="{x:Static theming:EditorIcons.ActionUpload}" FontSize="12" FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal"/>
                 </Button>
             </StackPanel>
         </Border>
@@ -614,7 +618,7 @@
                     Background="{DynamicResource ShareX.Brush.Background.Panel}"
                     BorderBrush="{DynamicResource ShareX.Brush.Border}"
                     BorderThickness="1"
-                    CornerRadius="8"
+                    CornerRadius="0"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Top"
                     Margin="16,125,16,125"
@@ -656,6 +660,7 @@
                                 VerticalAlignment="Center"/>
             </Grid>
         </Border>
-        </Grid>
-    </ThemeVariantScope>
+
+
+    </Grid>
 </UserControl>

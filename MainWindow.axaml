@@ -5,170 +5,406 @@
         xmlns:editor="clr-namespace:ShareX.ImageEditor.Presentation.Views;assembly=ShareX.ImageEditor"
         x:Class="BugCapture.MainWindow"
         x:DataType="local:MainWindow"
-        Title="BugCapture" Width="900" Height="850"
-        Background="#F3F3F3">
+        Title="{Binding BugTitle, StringFormat='{}BugCapture - {0}', FallbackValue='BugCapture'}"
+        Width="1300" Height="860"
+        SystemDecorations="Full"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        ExtendClientAreaChromeHints="NoChrome"
+        Background="{DynamicResource BgBrush}">
 
     <Window.Styles>
-        <!-- Fluent-style section card border -->
-        <Style Selector="Border.fluent-card">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="BorderBrush" Value="#E0E0E0" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="Padding" Value="12,10" />
+
+        <!-- ── Dashboard card ── -->
+        <Style Selector="Border.dash-card">
+            <Setter Property="Background"       Value="{DynamicResource CardBrush}" />
+            <Setter Property="BorderBrush"      Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness"  Value="1" />
+            <Setter Property="CornerRadius"     Value="0" />
+            <Setter Property="Padding"          Value="14,12" />
         </Style>
 
-        <!-- Thumbnail border -->
-        <Style Selector="Border.thumbnail-border">
-            <Setter Property="BorderBrush" Value="#D0D0D0" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="#F8F8F8" />
-            <Setter Property="CornerRadius" Value="4" />
-        </Style>
-        <Style Selector="Border.thumbnail-border.selected">
-            <Setter Property="BorderBrush" Value="#0078D4" />
-            <Setter Property="BorderThickness" Value="2" />
-            <Setter Property="Background" Value="#EBF3FB" />
+        <!-- ── Section label (upper-left of each card) ── -->
+        <Style Selector="TextBlock.card-label">
+            <Setter Property="FontSize"     Value="10" />
+            <Setter Property="FontWeight"   Value="SemiBold" />
+            <Setter Property="Foreground"   Value="{DynamicResource MutedBrush}" />
+            <Setter Property="Margin"       Value="0,0,0,8" />
+            <Setter Property="LetterSpacing" Value="1.4" />
         </Style>
 
-        <!-- Fluent-style label -->
+        <!-- ── Field label ── -->
         <Style Selector="TextBlock.field-label">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="#323130" />
-            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="FontSize"     Value="10" />
+            <Setter Property="FontWeight"   Value="SemiBold" />
+            <Setter Property="Foreground"   Value="#5A7AAB" />
+            <Setter Property="Margin"       Value="0,0,0,5" />
+            <Setter Property="LetterSpacing" Value="1" />
         </Style>
 
-        <!-- Fluent toolbar button style -->
-        <Style Selector="Button.toolbar-btn">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="BorderBrush" Value="#D1D1D1" />
-            <Setter Property="BorderThickness" Value="1" />
+        <!-- ── TextBox dark style ── -->
+        <Style Selector="TextBox">
+            <Setter Property="Background"   Value="{DynamicResource BgBrush}" />
+            <Setter Property="BorderBrush"  Value="{DynamicResource BorderBrush}" />
+            <Setter Property="Foreground"   Value="{DynamicResource TextBrush}" />
+            <Setter Property="CaretBrush"   Value="{DynamicResource AccentBrush}" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Padding"      Value="10,7" />
+            <Setter Property="FontSize"     Value="13" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        </Style>
+        
+        <!-- ── Title Bar Editor ── -->
+        <Style Selector="TextBox.title-bar-editor">
+            <Setter Property="Background"   Value="#1A1A1A" />
+            <Setter Property="BorderBrush"  Value="#333333" />
+            <Setter Property="FontSize"     Value="12" />
+            <Setter Property="Height"       Value="28" />
             <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Padding" Value="12,6" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="#323130" />
         </Style>
-        <Style Selector="Button.toolbar-btn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#F0F0F0" />
-        </Style>
-        <Style Selector="Button.toolbar-btn:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E0E0E0" />
+        <Style Selector="TextBox.title-bar-editor:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Background" Value="#1A1A1A" />
         </Style>
 
-        <!-- Fluent toggle button (editor visibility) -->
-        <Style Selector="ToggleButton.editor-toggle">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="BorderBrush" Value="#D1D1D1" />
+        <!-- ── Toolbar button dark ── -->
+        <Style Selector="Button.dash-btn">
+            <Setter Property="Background"       Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderBrush"      Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness"  Value="1" />
+            <Setter Property="CornerRadius"     Value="0" />
+            <Setter Property="Padding"          Value="14,7" />
+            <Setter Property="FontSize"         Value="12" />
+            <Setter Property="FontWeight"       Value="Medium" />
+            <Setter Property="Foreground"       Value="{DynamicResource TextBrush}" />
+        </Style>
+        <Style Selector="Button.dash-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+        <Style Selector="Button.dash-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        </Style>
+
+        <!-- ── Window control buttons (minimize / close) ── -->
+        <Style Selector="Button.wnd-btn">
+            <Setter Property="Background"       Value="Transparent" />
+            <Setter Property="BorderThickness"  Value="0" />
+            <Setter Property="CornerRadius"     Value="0" />
+            <Setter Property="Padding"          Value="0" />
+            <Setter Property="Width"            Value="40" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Foreground"       Value="{DynamicResource MutedBrush}" />
+        </Style>
+        <Style Selector="Button.wnd-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+        </Style>
+        <Style Selector="Button.wnd-btn.close-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#8B1A1A" />
+        </Style>
+        <Style Selector="Button.wnd-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#0D2040" />
+        </Style>
+
+        <!-- ── Toggle button dark ── -->
+        <Style Selector="ToggleButton.dash-toggle">
+            <Setter Property="Background"       Value="#112550" />
+            <Setter Property="BorderBrush"      Value="#1E3A6E" />
+            <Setter Property="BorderThickness"  Value="1" />
+            <Setter Property="CornerRadius"     Value="0" />
+            <Setter Property="Padding"          Value="14,7" />
+            <Setter Property="FontSize"         Value="12" />
+            <Setter Property="FontWeight"       Value="Medium" />
+            <Setter Property="Foreground"       Value="#5A7AAB" />
+        </Style>
+        <Style Selector="ToggleButton.dash-toggle:checked /template/ ContentPresenter">
+            <Setter Property="Background" Value="#0D2D4A" />
+        </Style>
+        <Style Selector="ToggleButton.dash-toggle:checked">
+            <Setter Property="Foreground"  Value="#4FD1C5" />
+            <Setter Property="BorderBrush" Value="#4FD1C5" />
+        </Style>
+        <Style Selector="ToggleButton.dash-toggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1A3560" />
+        </Style>
+
+        <!-- ── Thumbnail border (dark) ── -->
+        <Style Selector="Border.thumb">
+            <Setter Property="BorderBrush"     Value="#1A3060" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Padding" Value="12,6" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="#323130" />
+            <Setter Property="Background"      Value="#0A1A38" />
+            <Setter Property="CornerRadius"    Value="0" />
         </Style>
-        <Style Selector="ToggleButton.editor-toggle:checked /template/ ContentPresenter">
-            <Setter Property="Background" Value="#EBF3FB" />
+        <Style Selector="Border.thumb.selected">
+            <Setter Property="BorderBrush"     Value="#4FD1C5" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="Background"      Value="#0D2D3A" />
         </Style>
-        <Style Selector="ToggleButton.editor-toggle:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#F0F0F0" />
+
+        <!-- ── Pulse dot animation ── -->
+        <Style Selector="Ellipse.pulse-dot">
+            <Style.Animations>
+                <Animation Duration="0:0:2" IterationCount="INFINITE">
+                    <KeyFrame Cue="0%">  <Setter Property="Opacity" Value="1.0" /></KeyFrame>
+                    <KeyFrame Cue="50%"> <Setter Property="Opacity" Value="0.25" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
         </Style>
+
+        <!-- ── Window Border Highlight ── -->
+        <Style Selector="Window[IsActive=True] Border#MainWindowBorder">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="BoxShadow" Value="0 0 15 2 #4FD1C5" />
+        </Style>
+        <Style Selector="Window[IsActive=False] Border#MainWindowBorder">
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+        </Style>
+
     </Window.Styles>
 
-    <!-- Root padding gives the "app chrome" feel -->
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" Margin="10,8,10,8">
+    <!-- ════════════════ ROOT LAYOUT ════════════════ -->
+    <Border x:Name="MainWindowBorder" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+        <Grid RowDefinitions="Auto,*,Auto">
 
-        <!-- ── Toolbar Row (Row 0) ── -->
-        <Grid Grid.Row="0" Margin="0,0,0,6">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <!-- Left: capture buttons -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                <Button Classes="toolbar-btn" Content="📷  Capture Image" Click="OnCaptureRegionClick" />
-                <Button Classes="toolbar-btn" Content="📜  Capture Scroll" Click="OnCaptureScrollClick" />
-            </StackPanel>
-            <!-- Right: editor visibility toggle -->
-            <ToggleButton Grid.Column="1"
-                          Classes="editor-toggle"
-                          IsChecked="{Binding IsEditorVisible, Mode=TwoWay}"
-                          ToolTip.Tip="Ẩn/hiện vùng chỉnh sửa ảnh">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="🖼️" FontSize="14" VerticalAlignment="Center" />
-                    <TextBlock Text="Image Editor" VerticalAlignment="Center" />
+        <!-- ╔══════════════ TOPBAR ══════════════╗ -->
+        <Border Grid.Row="0"
+                Background="#1e1e1e"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                Padding="16,0,0,0"
+                DragDrop.AllowDrop="False">
+            <Grid x:Name="TopBar"
+                  Background="Transparent"
+                  PointerPressed="OnTopBarPointerPressed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: pulsing status dot + app name -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center" Margin="0,4,16,4">
+                    <Ellipse Classes="pulse-dot"
+                             Width="8" Height="8"
+                             Fill="{DynamicResource AccentBrush}" />
+                    <TextBlock Text="🐞" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="BUGCAPTURE"
+                               FontSize="11" FontWeight="Bold"
+                               LetterSpacing="2"
+                               Foreground="{DynamicResource AccentBrush}"
+                               VerticalAlignment="Center" />
                 </StackPanel>
-            </ToggleButton>
+
+                <Border Grid.Column="1" />
+
+                <!-- Right: live date/time  +  Minimize / Close -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal"
+                            VerticalAlignment="Stretch" Spacing="0">
+
+                    <!-- Theme Toggle -->
+                    <Button Classes="wnd-btn"
+                            ToolTip.Tip="Chuyển chế độ Sáng/Tối"
+                            Click="OnToggleThemeClick">
+                        <TextBlock Text="💡" FontSize="14" Foreground="#9CB3D9"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center" />
+                    </Button>
+
+                    <!-- DateTime label -->
+                    <TextBlock Text="{Binding CurrentDateTime}"
+                               FontSize="11" FontWeight="Medium"
+                               LetterSpacing="0.5"
+                               Foreground="#9CB3D9"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
+
+                    <!-- Minimize -->
+                    <Button Classes="wnd-btn"
+                            ToolTip.Tip="Thu nhỏ"
+                            Click="OnMinimizeClick">
+                        <TextBlock Text="⎯" FontSize="12" Foreground="#5A7AAB"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center" />
+                    </Button>
+
+                    <!-- Maximize -->
+                    <Button Classes="wnd-btn"
+                            ToolTip.Tip="Phóng to / Thu nhỏ"
+                            Click="OnMaximizeClick">
+                        <TextBlock Text="▢" FontSize="13" Foreground="#5A7AAB"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center" />
+                    </Button>
+
+                    <!-- Close -->
+                    <Button Classes="wnd-btn close-btn"
+                            ToolTip.Tip="Đóng"
+                            Click="OnCloseClick">
+                        <TextBlock Text="✕" FontSize="12" Foreground="#C87070"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center" />
+                    </Button>
+
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+        <!-- ╔══════════════ MAIN CONTENT ══════════════╗ -->
+        <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="12,10,12,10">
+
+            <!-- ── Row 0: Bug Description ── -->
+            <Border Grid.Row="0" Classes="dash-card" Margin="0,0,0,8" Padding="12,10">
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                    <!-- Title Row -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="card-label" Text="TIÊU ĐỀ" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding BugTitle}"
+                             Height="32" Margin="0,0,0,10" VerticalAlignment="Center"
+                             Watermark="Nhập tiêu đề bug tại đây..." />
+
+                    <!-- Description Row -->
+                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="card-label" Text="MÔ TẢ BUG" Width="100" Margin="0,4,12,0" VerticalAlignment="Top" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BugDescription}"
+                             AcceptsReturn="True" TextWrapping="Wrap" Height="60" VerticalAlignment="Top"
+                             Watermark="Mô tả chi tiết: bước tái hiện, kết quả mong đợi, kết quả thực tế..." />
+                </Grid>
+            </Border>
+
+            <!-- ── Row 1: Split Gallery & Editor ── -->
+            <Grid Grid.Row="1" ColumnDefinitions="130,*" Margin="0">
+                
+                <!-- Left: Image Gallery Vertical -->
+                <Border Grid.Column="0" Classes="dash-card" Margin="0,0,8,0" Padding="12,10">
+                    <Grid RowDefinitions="Auto,*">
+                        <StackPanel Grid.Row="0" Margin="0,0,0,8">                            
+                            <StackPanel Spacing="6">
+                                <Button Classes="dash-btn" Click="OnCaptureRegionClick" Padding="4" Height="44" Width="100">
+                                    <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
+                                        <TextBlock Text="📷" FontSize="14" HorizontalAlignment="Center" />
+                                        <TextBlock Text="Capture" FontSize="10" HorizontalAlignment="Center" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="dash-btn" Click="OnCaptureScrollClick" Padding="4" Height="44" Width="100">
+                                    <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
+                                        <TextBlock Text="📜" FontSize="14" HorizontalAlignment="Center" />
+                                        <TextBlock Text="Scroll" FontSize="10" HorizontalAlignment="Center" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
+                                <ToggleButton Classes="dash-toggle"
+                                              IsChecked="{Binding IsEditorVisible, Mode=TwoWay}"
+                                              Padding="4" Height="44" Width="100" FontSize="10"
+                                              ToolTip.Tip="Ẩn/hiện vùng chỉnh sửa ảnh">
+                                    <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
+                                        <TextBlock Text="✏️" FontSize="14" HorizontalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="EditorView" FontSize="10" HorizontalAlignment="Center" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </ToggleButton>
+                            </StackPanel>
+                        </StackPanel>
+                        
+                        <ScrollViewer Grid.Row="1"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding CapturedImages}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="6" HorizontalAlignment="Center" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:CapturedImage">
+                                        <Button Padding="0" Margin="0" BorderThickness="0"
+                                                Background="Transparent"
+                                                Click="OnThumbnailClick"
+                                                CommandParameter="{Binding}">
+                                            <Border Classes="thumb"
+                                                    Classes.selected="{Binding IsSelected}"
+                                                    Padding="3" Width="100" Height="70">
+                                                <Grid Background="Transparent">
+                                                    <Image Source="{Binding Thumbnail}"
+                                                           Stretch="UniformToFill"
+                                                           IsHitTestVisible="False" />
+                                                    <!-- Delete -->
+                                                    <Button HorizontalAlignment="Right"
+                                                            VerticalAlignment="Top"
+                                                            Content="✕"
+                                                            Background="{DynamicResource SurfaceBrush}"
+                                                            Foreground="{DynamicResource AccentBrush}"
+                                                            FontSize="10" FontWeight="Bold"
+                                                            Padding="3,1" Margin="1"
+                                                            CornerRadius="4"
+                                                            Click="OnDeleteImageClick"
+                                                            CommandParameter="{Binding}" />
+                                                </Grid>
+                                            </Border>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <!-- Right: Image Editor -->
+                <Border Grid.Column="1" Classes="dash-card" Padding="0" ClipToBounds="True"
+                        BorderThickness="1"
+                        IsVisible="{Binding IsEditorVisible}">
+                    <editor:EditorView x:Name="EditorViewControl"
+                                       DataContext="{Binding EditorViewModel}"
+                                       HorizontalAlignment="Stretch"
+                                       VerticalAlignment="Stretch" />
+                </Border>
+            </Grid>
         </Grid>
 
-        <!-- ── Tiêu đề bug (Row 1) ── -->
-        <Border Grid.Row="1" Classes="fluent-card" Margin="0,0,0,6">
-            <StackPanel>
-                <TextBlock Classes="field-label" Text="Tiêu đề bug" />
-                <TextBox Text="{Binding BugTitle}" />
-            </StackPanel>
+        <!-- ╔══════════════ STATUSBAR ══════════════╗ -->
+        <Border Grid.Row="2"
+                Background="#1e1e1e"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
+                Padding="16,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusText}"
+                           FontSize="11"
+                           Foreground="#9cb3d9"
+                           VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1"
+                           Text="BugCapture v1.0 | lam-pt@fujinet.net"
+                           FontSize="10"
+                           Foreground="#9cb3d9"
+                           VerticalAlignment="Center"
+                           LetterSpacing="0.5" />
+            </Grid>
         </Border>
 
-        <!-- ── Mô tả bug (Row 2) ── -->
-        <Border Grid.Row="2" Classes="fluent-card" Margin="0,0,0,6">
-            <StackPanel>
-                <TextBlock Classes="field-label" Text="Mô tả bug" />
-                <TextBox Text="{Binding BugDescription}"
-                         AcceptsReturn="True" TextWrapping="Wrap" Height="70" />
-            </StackPanel>
-        </Border>
-
-        <!-- ── Gallery (Row 3) ── -->
-        <Border Grid.Row="3" Classes="fluent-card" Margin="0,0,0,6" Padding="8">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                          VerticalScrollBarVisibility="Disabled"
-                          Height="62">
-                <ItemsControl ItemsSource="{Binding CapturedImages}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="8" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="models:CapturedImage">
-                            <Button Padding="0" Margin="0" BorderThickness="0" Background="Transparent"
-                                    Click="OnThumbnailClick" CommandParameter="{Binding}">
-                                <Border Classes="thumbnail-border"
-                                        Classes.selected="{Binding IsSelected}"
-                                        Padding="3" MaxHeight="58">
-                                    <Grid Background="Transparent">
-                                        <Image Source="{Binding Thumbnail}" Width="60" Height="40"
-                                               Stretch="UniformToFill" IsHitTestVisible="False" />
-                                        <!-- Delete Button -->
-                                        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
-                                                Content="🗑️" Background="#AA000000" Foreground="White"
-                                                Padding="4" Margin="2" CornerRadius="10"
-                                                Click="OnDeleteImageClick"
-                                                CommandParameter="{Binding}" />
-                                    </Grid>
-                                </Border>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </Border>
-
-        <!-- ── Editor Area (Row 4) ── -->
-        <Border Grid.Row="4" Classes="fluent-card" Padding="0" ClipToBounds="True"
-                IsVisible="{Binding IsEditorVisible}">
-            <editor:EditorView x:Name="EditorViewControl"
-                               DataContext="{Binding EditorViewModel}"
-                               HorizontalAlignment="Stretch"
+        <!-- ══════════════ FULLSCREEN EDITOR OVERLAY ══════════════ -->
+        <Grid Grid.Row="0" Grid.RowSpan="3" 
+              IsVisible="{Binding EditorViewModel.IsEditorMaximized}"
+              Background="{DynamicResource BgBrush}"
+              ZIndex="1000">
+            <editor:EditorView DataContext="{Binding EditorViewModel}" 
+                               HorizontalAlignment="Stretch" 
                                VerticalAlignment="Stretch" />
-        </Border>
+            
+            <!-- Quick exit button for full screen -->
+            <Button Command="{Binding EditorViewModel.ToggleEditorMaximizedCommand}"
+                    VerticalAlignment="Top" HorizontalAlignment="Right"
+                    Classes="wnd-btn" Width="40" Height="40" Margin="10">
+                <TextBlock Text="✕" FontSize="16" Foreground="{DynamicResource MutedBrush}"/>
+            </Button>
+        </Grid>
 
-        <!-- ── Status Bar (Row 5) ── -->
-        <Border Grid.Row="5" Margin="0,6,0,0"
-                Background="#EDEDED" BorderBrush="#E0E0E0" BorderThickness="1"
-                CornerRadius="4" Padding="8,4" IsHitTestVisible="False">
-            <TextBlock Text="{Binding StatusText}" Foreground="#605E5C"
-                       FontSize="11" HorizontalAlignment="Center" />
-        </Border>
-
-    </Grid>
+        </Grid>
+    </Border>
 </Window>

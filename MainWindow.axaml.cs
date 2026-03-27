@@ -22,6 +22,8 @@ namespace BugCapture
         private CapturedImage? _currentlyEditingImage;
         private bool _isEditorVisible = true;
         private double _expandedHeight = 850;
+        private string _currentDateTime = string.Empty;
+        private System.Threading.Timer? _clockTimer;
 
         public ObservableCollection<CapturedImage> CapturedImages { get; } = new ObservableCollection<CapturedImage>();
         public MainViewModel EditorViewModel { get; } = new MainViewModel();
@@ -74,15 +76,36 @@ namespace BugCapture
         public new event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
 
+        public string CurrentDateTime
+        {
+            get => _currentDateTime;
+            private set { _currentDateTime = value; OnPropertyChanged(nameof(CurrentDateTime)); }
+        }
+
+        private void UpdateClock(object? state)
+        {
+            var now = DateTime.Now;
+            var dayNames = new[] { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+            var monNames = new[] { "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+                                   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
+            var formatted = $"{dayNames[(int)now.DayOfWeek]}, {monNames[now.Month - 1]} {now.Day:D2}, {now.Year}  {now:HH:mm:ss}";
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => CurrentDateTime = formatted);
+        }
+
         public MainWindow()
         {
             InitializeComponent();
             _captureService = new ShareXCaptureService();
             EditorViewModel.ShowTaskModeButtons = false;
-            
+
             // Subscribe to editor events
             EditorViewModel.SaveRequested += OnEditorSaveRequested;
             EditorViewModel.CopyRequested += OnEditorCopyRequested;
+
+            // Start live clock
+            UpdateClock(null);
+            _clockTimer = new System.Threading.Timer(UpdateClock, null,
+                TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
 
             DataContext = this;
         }
@@ -230,27 +253,81 @@ namespace BugCapture
 
         public async void OnCaptureRegionClick(object sender, RoutedEventArgs e)
         {
-            var result = await _captureService.CaptureRegion();
-            if (result != null)
+            this.Hide();
+            try
             {
-                result.CaptureType = $"Evidence_No.{_evidenceCounter++:D2}";
-                CapturedImages.Add(result);
-                
-                // Auto-select the new capture
-                OnThumbnailClick(result);
+                var result = await _captureService.CaptureRegion();
+                if (result != null)
+                {
+                    result.CaptureType = $"Evidence_No.{_evidenceCounter++:D2}";
+                    CapturedImages.Add(result);
+                    
+                    // Auto-select the new capture
+                    OnThumbnailClick(result);
+                }
+            }
+            finally
+            {
+                this.Show();
+                this.Activate();
             }
         }
 
         public async void OnCaptureScrollClick(object sender, RoutedEventArgs e)
         {
-            var result = await _captureService.CaptureScrolling();
-            if (result != null)
+            this.Hide();
+            try
             {
-                result.CaptureType = $"Evidence_No.{_evidenceCounter++:D2}";
-                CapturedImages.Add(result);
+                var result = await _captureService.CaptureScrolling();
+                if (result != null)
+                {
+                    result.CaptureType = $"Evidence_No.{_evidenceCounter++:D2}";
+                    CapturedImages.Add(result);
 
-                // Auto-select the new capture
-                OnThumbnailClick(result);
+                    // Auto-select the new capture
+                    OnThumbnailClick(result);
+                }
+            }
+            finally
+            {
+                this.Show();
+                this.Activate();
+            }
+        }
+
+        public void OnTopBarPointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                BeginMoveDrag(e);
+            }
+        }
+
+        public void OnMinimizeClick(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        public void OnMaximizeClick(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState == WindowState.Maximized 
+                ? WindowState.Normal 
+                : WindowState.Maximized;
+        }
+
+        public void OnCloseClick(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
+        public void OnToggleThemeClick(object sender, RoutedEventArgs e)
+        {
+            if (Avalonia.Application.Current != null)
+            {
+                Avalonia.Application.Current.RequestedThemeVariant = 
+                    Avalonia.Application.Current.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark 
+                        ? Avalonia.Styling.ThemeVariant.Light 
+                        : Avalonia.Styling.ThemeVariant.Dark;
             }
         }
 

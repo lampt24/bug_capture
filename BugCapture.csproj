@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -17,9 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="ShareX\ShareX.ScreenCaptureLib\ShareX.ScreenCaptureLib.csproj" />
-    <Reference Include="ShareX.ImageEditor">
-      <HintPath>ShareX\ShareX.ImageEditor\src\ShareX.ImageEditor\bin\x64\Debug\net9.0\ShareX.ImageEditor.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="ShareX\ShareX.ImageEditor\src\ShareX.ImageEditor\ShareX.ImageEditor.csproj" />
   </ItemGroup>
 
   <ItemGroup>

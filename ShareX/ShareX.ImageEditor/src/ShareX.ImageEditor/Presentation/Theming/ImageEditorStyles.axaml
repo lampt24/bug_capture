@@ -17,20 +17,21 @@
 
     <!-- Shared buttons -->
     <Style Selector="Button.editor-button">
-        <Setter Property="Height" Value="40"/>
+        <Setter Property="Height" Value="26"/>
         <Setter Property="Background" Value="{DynamicResource ShareX.Brush.Control.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ShareX.Brush.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Foreground" Value="{DynamicResource ShareX.Brush.Text}"/>
-        <Setter Property="Padding" Value="8,6"/>
-        <Setter Property="CornerRadius" Value="4"/>
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Padding" Value="4,2"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="FontSize" Value="11"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
 
         <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{DynamicResource ShareX.Brush.Border}"/>
             <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="0"/>
         </Style>
 
         <Style Selector="^:pressed">
@@ -40,6 +41,7 @@
         <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{DynamicResource ShareX.Brush.Border}"/>
             <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="0"/>
         </Style>
 
         <Style Selector="^.active">
@@ -55,7 +57,7 @@
     <Style Selector="Button.picker-button">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="CornerRadius" Value="0"/>
 
         <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource ShareX.Brush.Control.Background.Disabled}"/>
@@ -76,11 +78,11 @@
     </Style>
 
     <Style Selector="Button.editor-button.toolbar-button">
-        <Setter Property="Width" Value="40"/>
-        <Setter Property="MinWidth" Value="40"/>
+        <Setter Property="Width" Value="26"/>
+        <Setter Property="MinWidth" Value="26"/>
         <Setter Property="FontFamily" Value="{DynamicResource ShareX.FontFamily.Icon}"/>
         <Setter Property="FontWeight" Value="Normal"/>
-        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontSize" Value="12"/>
     </Style>
 
     <Style Selector="Button.ratio-button">
@@ -140,7 +142,7 @@
         <Setter Property="Background" Value="{DynamicResource ShareX.Brush.Control.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ShareX.Brush.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="CornerRadius" Value="0"/>
         <Setter Property="Padding" Value="8"/>
         <Setter Property="BoxShadow" Value="0 4 16 #40000000"/>
     </Style>
@@ -192,7 +194,7 @@
 
     <Style Selector="Border.capsule">
         <Setter Property="Padding" Value="6,3"/>
-        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="CornerRadius" Value="2"/>
         <Setter Property="Background" Value="{DynamicResource ShareX.Brush.Accent}"/>
 
         <Style Selector="^ TextBlock">
@@ -204,7 +206,7 @@
         <Setter Property="Background" Value="{DynamicResource ShareX.Brush.Background.Popup}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ShareX.Brush.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="CornerRadius" Value="0"/>
         <Setter Property="Padding" Value="4"/>
     </Style>
 
@@ -340,7 +342,7 @@
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="10,8"/>
         <Setter Property="Margin" Value="4"/>
-        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="CornerRadius" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
 
         <Style Selector="^:pointerover">
@@ -355,8 +357,8 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
         <Setter Property="Padding" Value="8,6"/>
-        <Setter Property="CornerRadius" Value="4"/>
-        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="MinHeight" Value="26"/>
 
         <Style Selector="^:pointerover">
             <Setter Property="Background" Value="{DynamicResource TextControlBackgroundPointerOver}"/>
@@ -412,8 +414,8 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Foreground" Value="{DynamicResource TextControlForeground}"/>
         <Setter Property="Padding" Value="8,6"/>
-        <Setter Property="CornerRadius" Value="4"/>
-        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="MinHeight" Value="26"/>
 
         <Style Selector="^:pointerover">
             <Setter Property="Background" Value="{DynamicResource TextControlBackgroundPointerOver}"/>
@@ -436,7 +438,7 @@
         <Setter Property="Foreground" Value="{DynamicResource ShareX.Brush.Text}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Padding" Value="10,8"/>
-        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="CornerRadius" Value="0"/>
     </Style>
 
     <Style Selector="ComboBoxItem:pointerover">
@@ -458,8 +460,8 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Foreground" Value="{DynamicResource ShareX.Brush.Text}"/>
         <Setter Property="Padding" Value="8,0"/>
-        <Setter Property="CornerRadius" Value="4"/>
-        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="MinHeight" Value="26"/>
         <Setter Property="TextAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
 
@@ -619,7 +621,7 @@
         <Setter Property="Background" Value="{DynamicResource ShareX.Brush.Control.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ShareX.Brush.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="CornerRadius" Value="0"/>
         <Setter Property="Padding" Value="6,2"/>
     </Style>
 
@@ -627,7 +629,7 @@
         <Setter Property="Foreground" Value="{DynamicResource ShareX.Brush.Text}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Padding" Value="12,8"/>
-        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="CornerRadius" Value="0"/>
     </Style>
 
     <Style Selector="ContextMenu MenuItem:pointerover /template/ Border#PART_LayoutRoot">

@@ -1,0 +1,48 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+            <Color x:Key="BgColor">#07122A</Color>
+            <Color x:Key="SurfaceColor">#0D1E3D</Color>
+            <Color x:Key="CardColor">#0F2246</Color>
+            <Color x:Key="BorderColor">#1A3060</Color>
+            <Color x:Key="AccentColor">#4FD1C5</Color>
+            <Color x:Key="MutedColor">#5A7AAB</Color>
+            <Color x:Key="TextColor">#E8EDF8</Color>
+
+            <SolidColorBrush x:Key="BgBrush"      Color="#07122A" />
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#0D1E3D" />
+            <SolidColorBrush x:Key="CardBrush"    Color="#0F2246" />
+            <SolidColorBrush x:Key="BorderBrush"  Color="#1A3060" />
+            <SolidColorBrush x:Key="AccentBrush"  Color="#4FD1C5" />
+            <SolidColorBrush x:Key="MutedBrush"   Color="#FFFFFF" />
+            <SolidColorBrush x:Key="TextBrush"    Color="#E8EDF8" />
+            
+            <!-- Hover/Pressed states -->
+            <SolidColorBrush x:Key="HoverBrush"   Color="#1A3560" />
+            <SolidColorBrush x:Key="PressedBrush" Color="#1E3A6E" />
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Light">
+            <Color x:Key="BgColor">#F0F2F5</Color>
+            <Color x:Key="SurfaceColor">#FFFFFF</Color>
+            <Color x:Key="CardColor">#F1F5F9</Color>
+            <Color x:Key="BorderColor">#CBD5E1</Color>
+            <Color x:Key="AccentColor">#0D9488</Color>
+            <Color x:Key="MutedColor">#222222</Color>
+            <Color x:Key="TextColor">#000000</Color>
+
+            <SolidColorBrush x:Key="BgBrush"      Color="#F0F2F5" />
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="CardBrush"    Color="#F1F5F9" />
+            <SolidColorBrush x:Key="BorderBrush"  Color="#CBD5E1" />
+            <SolidColorBrush x:Key="AccentBrush"  Color="#0D9488" />
+            <SolidColorBrush x:Key="MutedBrush"   Color="#000000" />
+            <SolidColorBrush x:Key="TextBrush"    Color="#000000" />
+
+            <!-- Hover/Pressed states for Light -->
+            <SolidColorBrush x:Key="HoverBrush"   Color="#EDF2F7" />
+            <SolidColorBrush x:Key="PressedBrush" Color="#E2E8F0" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

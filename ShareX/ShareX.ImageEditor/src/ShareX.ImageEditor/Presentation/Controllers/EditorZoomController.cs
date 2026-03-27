@@ -44,7 +44,9 @@ public class EditorZoomController
     public void OnPreviewPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
         if (_view.DataContext is not MainViewModel vm) return;
-        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
+        
+        // Force zoom over scroll regardless of Ctrl key
+        e.Handled = true;
 
         // Throttle: Ignore events that come too quickly after the last zoom change
         var now = DateTime.UtcNow;
@@ -200,9 +202,19 @@ public class EditorZoomController
         if (sender is not ScrollViewer scrollViewer) return;
 
         var properties = e.GetCurrentPoint(scrollViewer).Properties;
-        if (!properties.IsMiddleButtonPressed) return;
+        
+        // Allow panning with:
+        // 1. Middle button (standard)
+        // 2. Right button (industry standard)
+        // 3. Left button if Alt is held or Space is held
+        bool startPanning = properties.IsMiddleButtonPressed || 
+                           properties.IsRightButtonPressed ||
+                           (properties.IsLeftButtonPressed && (e.KeyModifiers.HasFlag(KeyModifiers.Alt) || _view.IsSpacePressed));
+        
+        if (!startPanning) return;
 
         _isPanning = true;
+        e.Pointer.Capture(scrollViewer); // Capture pointer early to ensure moved events follow 179
         _panStart = e.GetPosition(scrollViewer);
         _panOrigin = scrollViewer.Offset;
         scrollViewer.Cursor = CursorAssetLoader.GetClosedHandCursor();

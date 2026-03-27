@@ -66,6 +66,7 @@ namespace ShareX.ImageEditor.Presentation.Theming
         public const string ActionCancel = LucideIcons.X;
         public const string ActionContinue = LucideIcons.Play;
         public const string ActionReset = LucideIcons.RefreshCw;
+        public const string ActionExpand = LucideIcons.Maximize;
         public const string ActionRotateLeft = LucideIcons.RotateCcwSquare;
         public const string ActionRotateRight = LucideIcons.RotateCwSquare;
 

@@ -30,6 +30,10 @@ namespace BugCapture.Services
         public async Task<CapturedImage?> CaptureScrolling()
         {
             var options = new ScrollingCaptureOptions();
+            options.ScrollMethod = ScrollMethod.MouseWheel;
+            options.AutoIgnoreBottomEdge = false;
+            options.AutoScrollTop = false;
+
             using (var manager = new ScrollingCaptureManager(options))
             {
                 if (manager.SelectWindow())
