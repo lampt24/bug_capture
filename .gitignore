@@ -1,0 +1,38 @@
+# .NET / C#
+bin/
+obj/
+publish/
+*.swp
+*~
+
+# User-specific files
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vshost.exe
+*.vshost.exe.config
+*.vshost.exe.manifest
+*.db
+*.opendb
+
+# Avalonia
+.avalonia/
+
+# OS
+[Th]umbs.db
+Log.txt
+*.log
+.DS_Store
+
+# ShareX Original repo leftovers (if any)
+ShareX.ImageEditor/Properties/Settings.settings
+ShareX.ImageEditor/Properties/Settings.Designer.cs

@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="BugCapture.csproj" />
+  <Project Path="ShareX\ShareX.HelpersLib\ShareX.HelpersLib.csproj" />
+  <Project Path="ShareX\ShareX.ImageEffectsLib\ShareX.ImageEffectsLib.csproj" />
+  <Project Path="ShareX\ShareX.MediaLib\ShareX.MediaLib.csproj" />
+  <Project Path="ShareX\ShareX.ScreenCaptureLib\ShareX.ScreenCaptureLib.csproj" />
+  <Project Path="ShareX\ShareX.UploadersLib\ShareX.UploadersLib.csproj" />
+  <Project Path="ShareX\ShareX.ImageEditor\src\ShareX.ImageEditor\ShareX.ImageEditor.csproj" />
+</Solution>

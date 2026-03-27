@@ -1,0 +1,174 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:BugCapture"
+        xmlns:models="clr-namespace:BugCapture.Models"
+        xmlns:editor="clr-namespace:ShareX.ImageEditor.Presentation.Views;assembly=ShareX.ImageEditor"
+        x:Class="BugCapture.MainWindow"
+        x:DataType="local:MainWindow"
+        Title="BugCapture" Width="900" Height="850"
+        Background="#F3F3F3">
+
+    <Window.Styles>
+        <!-- Fluent-style section card border -->
+        <Style Selector="Border.fluent-card">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E0E0E0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="12,10" />
+        </Style>
+
+        <!-- Thumbnail border -->
+        <Style Selector="Border.thumbnail-border">
+            <Setter Property="BorderBrush" Value="#D0D0D0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="#F8F8F8" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="Border.thumbnail-border.selected">
+            <Setter Property="BorderBrush" Value="#0078D4" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="Background" Value="#EBF3FB" />
+        </Style>
+
+        <!-- Fluent-style label -->
+        <Style Selector="TextBlock.field-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#323130" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+
+        <!-- Fluent toolbar button style -->
+        <Style Selector="Button.toolbar-btn">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#D1D1D1" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="#323130" />
+        </Style>
+        <Style Selector="Button.toolbar-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#F0F0F0" />
+        </Style>
+        <Style Selector="Button.toolbar-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#E0E0E0" />
+        </Style>
+
+        <!-- Fluent toggle button (editor visibility) -->
+        <Style Selector="ToggleButton.editor-toggle">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#D1D1D1" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="#323130" />
+        </Style>
+        <Style Selector="ToggleButton.editor-toggle:checked /template/ ContentPresenter">
+            <Setter Property="Background" Value="#EBF3FB" />
+        </Style>
+        <Style Selector="ToggleButton.editor-toggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#F0F0F0" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Root padding gives the "app chrome" feel -->
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" Margin="10,8,10,8">
+
+        <!-- ── Toolbar Row (Row 0) ── -->
+        <Grid Grid.Row="0" Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <!-- Left: capture buttons -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                <Button Classes="toolbar-btn" Content="📷  Capture Image" Click="OnCaptureRegionClick" />
+                <Button Classes="toolbar-btn" Content="📜  Capture Scroll" Click="OnCaptureScrollClick" />
+            </StackPanel>
+            <!-- Right: editor visibility toggle -->
+            <ToggleButton Grid.Column="1"
+                          Classes="editor-toggle"
+                          IsChecked="{Binding IsEditorVisible, Mode=TwoWay}"
+                          ToolTip.Tip="Ẩn/hiện vùng chỉnh sửa ảnh">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="🖼️" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="Image Editor" VerticalAlignment="Center" />
+                </StackPanel>
+            </ToggleButton>
+        </Grid>
+
+        <!-- ── Tiêu đề bug (Row 1) ── -->
+        <Border Grid.Row="1" Classes="fluent-card" Margin="0,0,0,6">
+            <StackPanel>
+                <TextBlock Classes="field-label" Text="Tiêu đề bug" />
+                <TextBox Text="{Binding BugTitle}" />
+            </StackPanel>
+        </Border>
+
+        <!-- ── Mô tả bug (Row 2) ── -->
+        <Border Grid.Row="2" Classes="fluent-card" Margin="0,0,0,6">
+            <StackPanel>
+                <TextBlock Classes="field-label" Text="Mô tả bug" />
+                <TextBox Text="{Binding BugDescription}"
+                         AcceptsReturn="True" TextWrapping="Wrap" Height="70" />
+            </StackPanel>
+        </Border>
+
+        <!-- ── Gallery (Row 3) ── -->
+        <Border Grid.Row="3" Classes="fluent-card" Margin="0,0,0,6" Padding="8">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Disabled"
+                          Height="62">
+                <ItemsControl ItemsSource="{Binding CapturedImages}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:CapturedImage">
+                            <Button Padding="0" Margin="0" BorderThickness="0" Background="Transparent"
+                                    Click="OnThumbnailClick" CommandParameter="{Binding}">
+                                <Border Classes="thumbnail-border"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Padding="3" MaxHeight="58">
+                                    <Grid Background="Transparent">
+                                        <Image Source="{Binding Thumbnail}" Width="60" Height="40"
+                                               Stretch="UniformToFill" IsHitTestVisible="False" />
+                                        <!-- Delete Button -->
+                                        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Content="🗑️" Background="#AA000000" Foreground="White"
+                                                Padding="4" Margin="2" CornerRadius="10"
+                                                Click="OnDeleteImageClick"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </Border>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ── Editor Area (Row 4) ── -->
+        <Border Grid.Row="4" Classes="fluent-card" Padding="0" ClipToBounds="True"
+                IsVisible="{Binding IsEditorVisible}">
+            <editor:EditorView x:Name="EditorViewControl"
+                               DataContext="{Binding EditorViewModel}"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch" />
+        </Border>
+
+        <!-- ── Status Bar (Row 5) ── -->
+        <Border Grid.Row="5" Margin="0,6,0,0"
+                Background="#EDEDED" BorderBrush="#E0E0E0" BorderThickness="1"
+                CornerRadius="4" Padding="8,4" IsHitTestVisible="False">
+            <TextBlock Text="{Binding StatusText}" Foreground="#605E5C"
+                       FontSize="11" HorizontalAlignment="Center" />
+        </Border>
+
+    </Grid>
+</Window>

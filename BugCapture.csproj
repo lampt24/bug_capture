@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="ShareX\**" />
+    <EmbeddedResource Remove="ShareX\**" />
+    <None Remove="ShareX\**" />
+    <AvaloniaXaml Remove="ShareX\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="ShareX\ShareX.ScreenCaptureLib\ShareX.ScreenCaptureLib.csproj" />
+    <Reference Include="ShareX.ImageEditor">
+      <HintPath>ShareX\ShareX.ImageEditor\src\ShareX.ImageEditor\bin\x64\Debug\net9.0\ShareX.ImageEditor.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" Version="11.3.12" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.12">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
