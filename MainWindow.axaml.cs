@@ -19,6 +19,10 @@ namespace BugCapture
         private string _statusText = "Ready";
         private string _bugTitle = string.Empty;
         private string _bugDescription = string.Empty;
+        private string _assignee = string.Empty;
+        private string _category = string.Empty;
+        private string _whoMiss = string.Empty;
+        private string _moduleId = string.Empty;
         private CapturedImage? _currentlyEditingImage;
         private bool _isEditorVisible = true;
         private double _expandedHeight = 850;
@@ -38,6 +42,30 @@ namespace BugCapture
         {
             get => _bugDescription;
             set { _bugDescription = value; OnPropertyChanged(nameof(BugDescription)); }
+        }
+
+        public string Assignee
+        {
+            get => _assignee;
+            set { _assignee = value; OnPropertyChanged(nameof(Assignee)); }
+        }
+
+        public string Category
+        {
+            get => _category;
+            set { _category = value; OnPropertyChanged(nameof(Category)); }
+        }
+
+        public string WhoMiss
+        {
+            get => _whoMiss;
+            set { _whoMiss = value; OnPropertyChanged(nameof(WhoMiss)); }
+        }
+
+        public string ModuleId
+        {
+            get => _moduleId;
+            set { _moduleId = value; OnPropertyChanged(nameof(ModuleId)); }
         }
 
         public string StatusText
@@ -91,6 +119,7 @@ namespace BugCapture
             var formatted = $"{dayNames[(int)now.DayOfWeek]}, {monNames[now.Month - 1]} {now.Day:D2}, {now.Year}  {now:HH:mm:ss}";
             Avalonia.Threading.Dispatcher.UIThread.Post(() => CurrentDateTime = formatted);
         }
+        public string ThemeIcon => (Avalonia.Application.Current?.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light) ? "🌙" : "☀️";
 
         public MainWindow()
         {
@@ -254,6 +283,7 @@ namespace BugCapture
         public async void OnCaptureRegionClick(object sender, RoutedEventArgs e)
         {
             this.Hide();
+            await System.Threading.Tasks.Task.Delay(250); // Give OS time to hide the window
             try
             {
                 var result = await _captureService.CaptureRegion();
@@ -261,9 +291,9 @@ namespace BugCapture
                 {
                     result.CaptureType = $"Evidence_No.{_evidenceCounter++:D2}";
                     CapturedImages.Add(result);
-                    
+
                     // Auto-select the new capture
-                    OnThumbnailClick(result);
+                    OnThumbnailClickInternal(result);
                 }
             }
             finally
@@ -276,6 +306,7 @@ namespace BugCapture
         public async void OnCaptureScrollClick(object sender, RoutedEventArgs e)
         {
             this.Hide();
+            await System.Threading.Tasks.Task.Delay(250); // Give OS time to hide the window
             try
             {
                 var result = await _captureService.CaptureScrolling();
@@ -285,7 +316,7 @@ namespace BugCapture
                     CapturedImages.Add(result);
 
                     // Auto-select the new capture
-                    OnThumbnailClick(result);
+                    OnThumbnailClickInternal(result);
                 }
             }
             finally
@@ -328,12 +359,14 @@ namespace BugCapture
                     Avalonia.Application.Current.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark 
                         ? Avalonia.Styling.ThemeVariant.Light 
                         : Avalonia.Styling.ThemeVariant.Dark;
+                
+                OnPropertyChanged(nameof(ThemeIcon));
             }
         }
 
         public void OnDeleteImageClick(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.CommandParameter is CapturedImage image)
+            if (sender is Button button && button.DataContext is CapturedImage image)
             {
                 if (_currentlyEditingImage == image)
                 {
@@ -344,16 +377,18 @@ namespace BugCapture
             }
         }
 
-        public void OnThumbnailClick(object sender, RoutedEventArgs e)
+        public void OnThumbnailClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.CommandParameter is CapturedImage image)
+            if (sender is Avalonia.Controls.Button btn && btn.DataContext is CapturedImage image)
             {
-                OnThumbnailClick(image);
+                OnThumbnailClickInternal(image);
             }
         }
 
-        private void OnThumbnailClick(CapturedImage image)
+        private void OnThumbnailClickInternal(CapturedImage image)
         {
+            if (image == null) return;
+
             // Safety check: confirm if switching while having unsaved changes
             if (EditorViewModel.IsDirty)
             {
@@ -375,39 +410,43 @@ namespace BugCapture
                 item.IsSelected = (item == image);
             }
 
-            _currentlyEditingImage = image;
-                StatusText = $"Editing {image.CaptureType}...";
-                try
-                {
-                    if (System.IO.File.Exists(image.FilePath))
-                    {
-                        using (var stream = System.IO.File.OpenRead(image.FilePath))
-                        {
-                            var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
-                            
-                            // Explicitly clear editor (annotations, history, etc.) before loading new image
-                            EditorViewModel.ClearCommand.Execute(null);
+            // Force editor visibility when selecting an image
+            IsEditorVisible = true;
 
-                            EditorViewModel.RequestZoomToFitOnNextImageLoad();
-                            EditorViewModel.PreviewImage = bitmap;
-                            EditorViewModel.LastSavedPath = image.FilePath;
-                            EditorViewModel.ImageFilePath = image.FilePath;
-                            EditorViewModel.ImageDimensions = $"{bitmap.Size.Width} x {bitmap.Size.Height}";
-                            
-                            // Reset dirty flag after all internal load-time events (HistoryChanged, etc.) have processed.
-                            // Those events often run at Normal priority, so we use Background priority to ensure this is the final word.
-                            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                            {
-                                EditorViewModel.IsDirty = false;
-                            }, Avalonia.Threading.DispatcherPriority.Background);
-                        }
+            _currentlyEditingImage = image;
+            StatusText = $"Editing {image.CaptureType}...";
+            
+            try
+            {
+                if (System.IO.File.Exists(image.FilePath))
+                {
+                    using (var stream = System.IO.File.OpenRead(image.FilePath))
+                    {
+                        var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+                        
+                        // Explicitly clear editor (annotations, history, etc.) before loading new image
+                        EditorViewModel.ClearCommand.Execute(null);
+
+                        EditorViewModel.RequestZoomToFitOnNextImageLoad();
+                        EditorViewModel.PreviewImage = bitmap;
+                        EditorViewModel.LastSavedPath = image.FilePath;
+                        EditorViewModel.ImageFilePath = image.FilePath;
+                        EditorViewModel.ImageDimensions = $"{bitmap.Size.Width} x {bitmap.Size.Height}";
+                        
+                        // Reset dirty flag after all internal load-time events (HistoryChanged, etc.) have processed.
+                        // Those events often run at Normal priority, so we use Background priority to ensure this is the final word.
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        {
+                            EditorViewModel.IsDirty = false;
+                        }, Avalonia.Threading.DispatcherPriority.Background);
                     }
                 }
-                catch (System.Exception ex)
-                {
-                    StatusText = $"Error loading editor: {ex.Message}";
-                    System.Diagnostics.Debug.WriteLine($"Failed to load image in editor: {ex.Message}");
-                }
+            }
+            catch (System.Exception ex)
+            {
+                StatusText = $"Error loading editor: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"Failed to load image in editor: {ex.Message}");
             }
         }
     }
+}

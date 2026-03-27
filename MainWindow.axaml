@@ -7,6 +7,7 @@
         x:DataType="local:MainWindow"
         Title="{Binding BugTitle, StringFormat='{}BugCapture - {0}', FallbackValue='BugCapture'}"
         Width="1300" Height="860"
+        WindowStartupLocation="CenterScreen"
         SystemDecorations="Full"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="-1"
@@ -49,8 +50,9 @@
             <Setter Property="Foreground"   Value="{DynamicResource TextBrush}" />
             <Setter Property="CaretBrush"   Value="{DynamicResource AccentBrush}" />
             <Setter Property="CornerRadius" Value="0" />
-            <Setter Property="Padding"      Value="10,7" />
+            <Setter Property="Padding"      Value="10,6" />
             <Setter Property="FontSize"     Value="13" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
         <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
@@ -63,6 +65,7 @@
             <Setter Property="FontSize"     Value="12" />
             <Setter Property="Height"       Value="28" />
             <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
         <Style Selector="TextBox.title-bar-editor:focus /template/ Border#PART_BorderElement">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
@@ -167,6 +170,15 @@
             <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
         </Style>
 
+        <Style Selector="Border.gallery-sidebar">
+            <Setter Property="Width" Value="130" />
+            <Setter Property="Grid.ColumnSpan" Value="1" />
+        </Style>
+        <Style Selector="Border.gallery-sidebar.full-width">
+            <Setter Property="Width" Value="{x:Static x:Double.NaN}" />
+            <Setter Property="Grid.ColumnSpan" Value="2" />
+        </Style>
+
     </Window.Styles>
 
     <!-- ════════════════ ROOT LAYOUT ════════════════ -->
@@ -212,9 +224,7 @@
                     <Button Classes="wnd-btn"
                             ToolTip.Tip="Chuyển chế độ Sáng/Tối"
                             Click="OnToggleThemeClick">
-                        <TextBlock Text="💡" FontSize="14" Foreground="#9CB3D9"
-                                   VerticalAlignment="Center"
-                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding ThemeIcon}" FontSize="14" Foreground="#9CB3D9" />
                     </Button>
 
                     <!-- DateTime label -->
@@ -229,27 +239,21 @@
                     <Button Classes="wnd-btn"
                             ToolTip.Tip="Thu nhỏ"
                             Click="OnMinimizeClick">
-                        <TextBlock Text="⎯" FontSize="12" Foreground="#5A7AAB"
-                                   VerticalAlignment="Center"
-                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="⎯" FontSize="12" Foreground="#5A7AAB" />
                     </Button>
 
                     <!-- Maximize -->
                     <Button Classes="wnd-btn"
                             ToolTip.Tip="Phóng to / Thu nhỏ"
                             Click="OnMaximizeClick">
-                        <TextBlock Text="▢" FontSize="13" Foreground="#5A7AAB"
-                                   VerticalAlignment="Center"
-                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="▢" FontSize="13" Foreground="#5A7AAB" />
                     </Button>
 
                     <!-- Close -->
                     <Button Classes="wnd-btn close-btn"
                             ToolTip.Tip="Đóng"
                             Click="OnCloseClick">
-                        <TextBlock Text="✕" FontSize="12" Foreground="#C87070"
-                                   VerticalAlignment="Center"
-                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="✕" FontSize="12" Foreground="#C87070" />
                     </Button>
 
                 </StackPanel>
@@ -261,30 +265,88 @@
         <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="12,10,12,10">
 
             <!-- ── Row 0: Bug Description ── -->
-            <Border Grid.Row="0" Classes="dash-card" Margin="0,0,0,8" Padding="12,10">
-                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
-                    <!-- Title Row -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="card-label" Text="TIÊU ĐỀ" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding BugTitle}"
-                             Height="32" Margin="0,0,0,10" VerticalAlignment="Center"
-                             Watermark="Nhập tiêu đề bug tại đây..." />
+            <Grid Grid.Row="0" Margin="12,10,12,15" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                <!-- Title Row -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="card-label" Text="TIÊU ĐỀ" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding BugTitle}"
+                         Height="32" Margin="0,0,0,10" VerticalAlignment="Center"
+                         Watermark="Nhập tiêu đề bug tại đây..." />
 
-                    <!-- Description Row -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="card-label" Text="MÔ TẢ BUG" Width="100" Margin="0,4,12,0" VerticalAlignment="Top" />
-                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BugDescription}"
-                             AcceptsReturn="True" TextWrapping="Wrap" Height="60" VerticalAlignment="Top"
-                             Watermark="Mô tả chi tiết: bước tái hiện, kết quả mong đợi, kết quả thực tế..." />
+                <!-- Description Row -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="card-label" Text="MÔ TẢ BUG" Width="100" Margin="0,4,12,10" VerticalAlignment="Top" />
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BugDescription}"
+                         AcceptsReturn="True" TextWrapping="Wrap" Height="60" Margin="0,0,0,10" 
+                         VerticalAlignment="Top" VerticalContentAlignment="Top"
+                         Watermark="Mô tả chi tiết: bước tái hiện, kết quả mong đợi, kết quả thực tế..." />
+
+                <!-- Row 2: Phân loại & Assignee Split -->
+                <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,12,*">
+                    <Grid Grid.Column="0" ColumnDefinitions="80,*">
+                        <TextBlock Grid.Column="0" Classes="card-label" Text="PHÂN LOẠI" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Stretch" 
+                                  Height="32" FontSize="12" Padding="8,4" 
+                                  BorderThickness="0" CornerRadius="0"
+                                  Background="{DynamicResource SurfaceBrush}"
+                                  Text="{Binding Category}">
+                            <ComboBoxItem>Coding Error</ComboBoxItem>
+                            <ComboBoxItem>Logic Error</ComboBoxItem>
+                            <ComboBoxItem>UI/UX Issue</ComboBoxItem>
+                            <ComboBoxItem>Performance</ComboBoxItem>
+                            <ComboBoxItem>Feature Request</ComboBoxItem>
+                        </ComboBox>
+                    </Grid>
+                    
+                    <Grid Grid.Column="2" ColumnDefinitions="80,*">
+                        <TextBlock Grid.Column="0" Classes="card-label" Text="ASSIGNEE" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Stretch" 
+                                  Height="32" FontSize="12" Padding="8,4" 
+                                  BorderThickness="0" CornerRadius="0"
+                                  Background="{DynamicResource SurfaceBrush}"
+                                  Text="{Binding Assignee}">
+                            <ComboBoxItem>Dev 1</ComboBoxItem>
+                            <ComboBoxItem>Dev 2</ComboBoxItem>
+                            <ComboBoxItem>QA Team</ComboBoxItem>
+                        </ComboBox>
+                    </Grid>
                 </Grid>
-            </Border>
+
+                <!-- Row 3: Who Miss & Module ID Split -->
+                <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="*,12,*" Margin="0,10,0,0">
+                    <Grid Grid.Column="0" ColumnDefinitions="80,*">
+                        <TextBlock Grid.Column="0" Classes="card-label" Text="WHO MISS" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Stretch" 
+                                  Height="32" FontSize="12" Padding="8,4" 
+                                  BorderThickness="0" CornerRadius="0"
+                                  Background="{DynamicResource SurfaceBrush}"
+                                  Text="{Binding WhoMiss}">
+                            <ComboBoxItem>Developer</ComboBoxItem>
+                            <ComboBoxItem>QA/QC</ComboBoxItem>
+                            <ComboBoxItem>Business Analyst</ComboBoxItem>
+                        </ComboBox>
+                    </Grid>
+                    
+                    <Grid Grid.Column="2" ColumnDefinitions="80,*">
+                        <TextBlock Grid.Column="0" Classes="card-label" Text="MODULE ID" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Height="32" FontSize="12" Padding="8,4" VerticalAlignment="Center" 
+                                 Text="{Binding ModuleId}"
+                                 Watermark="Mã module (ex: US-001)..." />
+                    </Grid>
+                </Grid>
+            </Grid>
 
             <!-- ── Row 1: Split Gallery & Editor ── -->
-            <Grid Grid.Row="1" ColumnDefinitions="130,*" Margin="0">
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Margin="0">
                 
-                <!-- Left: Image Gallery Vertical -->
-                <Border Grid.Column="0" Classes="dash-card" Margin="0,0,8,0" Padding="12,10">
-                    <Grid RowDefinitions="Auto,*">
-                        <StackPanel Grid.Row="0" Margin="0,0,0,8">                            
-                            <StackPanel Spacing="6">
+                <!-- Left: Image Gallery (Dynamic Orientation) -->
+                <Border Grid.Column="0" 
+                        Classes="dash-card gallery-sidebar" 
+                        Classes.full-width="{Binding !IsEditorVisible}"
+                        MinHeight="120"
+                        Margin="0,0,0,0" Padding="12">
+                    <Panel>
+                        <!-- 1. VERTICAL LAYOUT (Sidebar Mode) -->
+                        <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsEditorVisible}">
+                            <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,12">
                                 <Button Classes="dash-btn" Click="OnCaptureRegionClick" Padding="4" Height="44" Width="100">
                                     <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                                         <TextBlock Text="📷" FontSize="14" HorizontalAlignment="Center" />
@@ -297,59 +359,91 @@
                                         <TextBlock Text="Scroll" FontSize="10" HorizontalAlignment="Center" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Button>
-                                <ToggleButton Classes="dash-toggle"
-                                              IsChecked="{Binding IsEditorVisible, Mode=TwoWay}"
-                                              Padding="4" Height="44" Width="100" FontSize="10"
-                                              ToolTip.Tip="Ẩn/hiện vùng chỉnh sửa ảnh">
+                                <ToggleButton Classes="dash-toggle" IsChecked="{Binding IsEditorVisible, Mode=TwoWay}"
+                                              Padding="4" Height="44" Width="100">
                                     <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
                                         <TextBlock Text="✏️" FontSize="14" HorizontalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
                                         <TextBlock Text="EditorView" FontSize="10" HorizontalAlignment="Center" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </ToggleButton>
                             </StackPanel>
-                        </StackPanel>
-                        
-                        <ScrollViewer Grid.Row="1"
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding CapturedImages}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Spacing="6" HorizontalAlignment="Center" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="models:CapturedImage">
-                                        <Button Padding="0" Margin="0" BorderThickness="0"
-                                                Background="Transparent"
-                                                Click="OnThumbnailClick"
-                                                CommandParameter="{Binding}">
-                                            <Border Classes="thumb"
-                                                    Classes.selected="{Binding IsSelected}"
-                                                    Padding="3" Width="100" Height="70">
-                                                <Grid Background="Transparent">
-                                                    <Image Source="{Binding Thumbnail}"
-                                                           Stretch="UniformToFill"
-                                                           IsHitTestVisible="False" />
-                                                    <!-- Delete -->
-                                                    <Button HorizontalAlignment="Right"
-                                                            VerticalAlignment="Top"
-                                                            Content="✕"
-                                                            Background="{DynamicResource SurfaceBrush}"
-                                                            Foreground="{DynamicResource AccentBrush}"
-                                                            FontSize="10" FontWeight="Bold"
-                                                            Padding="3,1" Margin="1"
-                                                            CornerRadius="4"
-                                                            Click="OnDeleteImageClick"
-                                                            CommandParameter="{Binding}" />
-                                                </Grid>
-                                            </Border>
-                                        </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding CapturedImages}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Vertical" Spacing="8" HorizontalAlignment="Center" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:CapturedImage">
+                                            <Button Padding="0" Margin="0" BorderThickness="0" Background="Transparent" Click="OnThumbnailClick" CommandParameter="{Binding}">
+                                                <Border Classes="thumb" Classes.selected="{Binding IsSelected}" Padding="3" Width="100" Height="70">
+                                                    <Grid>
+                                                        <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                                        <Button Classes="close-btn" Click="OnDeleteImageClick" CommandParameter="{Binding}" 
+                                                                Content="✕" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                                                    </Grid>
+                                                </Border>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <!-- 2. HORIZONTAL LAYOUT (Bottom Bar Mode) -->
+                        <ScrollViewer IsVisible="{Binding !IsEditorVisible}" HorizontalScrollBarVisibility="Auto">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <!-- Action Buttons (Stretching) -->
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Stretch">
+                                    <Button Classes="dash-btn" Click="OnCaptureRegionClick" Width="80" Margin="0,0,0,0" Padding="8">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="📷" FontSize="20" HorizontalAlignment="Center" />
+                                            <TextBlock Text="Capture" FontSize="10" HorizontalAlignment="Center" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Classes="dash-btn" Click="OnCaptureScrollClick" Width="80" Margin="0,0,0,0" Padding="8">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="📜" FontSize="20" HorizontalAlignment="Center" />
+                                            <TextBlock Text="Scroll" FontSize="10" HorizontalAlignment="Center" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Button>
+                                    <ToggleButton Classes="dash-toggle" IsChecked="{Binding IsEditorVisible, Mode=TwoWay}" Width="80" Padding="8">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="✏️" FontSize="20" HorizontalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
+                                            <TextBlock Text="Editor" FontSize="10" HorizontalAlignment="Center" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </ToggleButton>
+                                </StackPanel>
+
+                                <!-- Divider -->
+                                <Border Width="1" Background="{DynamicResource BorderBrush}" Opacity="0.5" Margin="4,0" />
+
+                                <!-- Horizontal Items List -->
+                                <ItemsControl ItemsSource="{Binding CapturedImages}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:CapturedImage">
+                                            <Button Padding="0" Margin="0" BorderThickness="0" Background="Transparent" Click="OnThumbnailClick" CommandParameter="{Binding}">
+                                                <Border Classes="thumb" Classes.selected="{Binding IsSelected}" Padding="3" Width="100" Height="70">
+                                                    <Grid>
+                                                        <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                                        <Button Classes="close-btn" Click="OnDeleteImageClick" CommandParameter="{Binding}" 
+                                                                Content="✕" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                                                    </Grid>
+                                                </Border>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
                         </ScrollViewer>
-                    </Grid>
+                    </Panel>
                 </Border>
 
                 <!-- Right: Image Editor -->
