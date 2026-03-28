@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="ShareX\**" />
     <EmbeddedResource Remove="ShareX\**" />
     <None Remove="ShareX\**" />

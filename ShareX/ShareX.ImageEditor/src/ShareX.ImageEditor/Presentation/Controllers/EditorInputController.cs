@@ -69,6 +69,7 @@ public class EditorInputController
         if (vm == null) return;
 
         var canvas = _view.FindControl<Canvas>("AnnotationCanvas") ?? sender as Canvas;
+        if (canvas == null) return;
         var props = e.GetCurrentPoint(canvas).Properties;
         
         // Panning is priority for Middle mouse, Right mouse, or Space+Left mouse
@@ -106,7 +107,7 @@ public class EditorInputController
             while (hitSource != null && hitSource != canvas)
             {
                 var candidate = hitSource as Control;
-                if (candidate != null && canvas.Children.Contains(candidate))
+                if (candidate != null && canvas != null && canvas.Children.Contains(candidate))
                 {
                     hitTarget = candidate;
                     break;
@@ -772,7 +773,7 @@ public class EditorInputController
         // Keyboard shortcuts are handled elsewhere; no pointer emulation needed here.
     }
 
-    private void CancelActiveRegionDrawing(Canvas canvas)
+    private void CancelActiveRegionDrawing(Canvas? canvas)
     {
         if (_cropActive) CancelCrop();
         if (_currentShape is global::Avalonia.Controls.Shapes.Rectangle rect)
@@ -1370,8 +1371,9 @@ public class EditorInputController
         }
     }
 
-    private async Task HandleImageTool(Canvas canvas, Point point)
+    private async Task HandleImageTool(Canvas? canvas, Point point)
     {
+        if (canvas == null) return;
         var topLevel = TopLevel.GetTopLevel(_view);
         if (topLevel?.StorageProvider != null)
         {
@@ -1408,8 +1410,9 @@ public class EditorInputController
         }
     }
 
-    private void HandleTextTool(Canvas canvas, SolidColorBrush brush, double strokeWidth)
+    private void HandleTextTool(Canvas? canvas, SolidColorBrush brush, double strokeWidth)
     {
+        if (canvas == null) return;
         var vm = ViewModel;
         if (vm == null) return;
 

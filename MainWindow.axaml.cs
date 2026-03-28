@@ -9,6 +9,11 @@ using System.Threading.Tasks;
 using ShareX.ImageEditor.Presentation.Views;
 using ShareX.ImageEditor.Presentation.ViewModels;
 using Avalonia.Input;
+using System.Collections.Generic;
+using System.Net.Http;
+using BugCapture.Services;
+using BugCapture.Models;
+using System.ComponentModel;
 
 namespace BugCapture
 {
@@ -28,6 +33,17 @@ namespace BugCapture
         private double _expandedHeight = 850;
         private string _currentDateTime = string.Empty;
         private System.Threading.Timer? _clockTimer;
+
+        // Redmine Integration
+        private readonly RedmineService _redmineService;
+        private string _redmineUrl = "http://localhost:3000/";
+        private string _redmineApiKey = "30c48cd55e4545693adbe9a99bc3c1afc1fca27d";
+        private ObservableCollection<RedmineProject> _projects = new();
+        private ObservableCollection<RedmineTracker> _trackers = new();
+        private RedmineProject? _selectedProject;
+        private RedmineTracker? _selectedTracker;
+        private ObservableCollection<CustomFieldControlViewModel> _customFieldControls = new();
+        private bool _isSubmitting = false;
 
         public ObservableCollection<CapturedImage> CapturedImages { get; } = new ObservableCollection<CapturedImage>();
         public MainViewModel EditorViewModel { get; } = new MainViewModel();
@@ -110,6 +126,65 @@ namespace BugCapture
             private set { _currentDateTime = value; OnPropertyChanged(nameof(CurrentDateTime)); }
         }
 
+        // Redmine Properties
+        public string RedmineUrl
+        {
+            get => _redmineUrl;
+            set { _redmineUrl = value; OnPropertyChanged(nameof(RedmineUrl)); }
+        }
+
+        public string RedmineApiKey
+        {
+            get => _redmineApiKey;
+            set { _redmineApiKey = value; OnPropertyChanged(nameof(RedmineApiKey)); }
+        }
+
+        public ObservableCollection<RedmineProject> Projects
+        {
+            get => _projects;
+            set { _projects = value; OnPropertyChanged(nameof(Projects)); }
+        }
+
+        public ObservableCollection<RedmineTracker> Trackers
+        {
+            get => _trackers;
+            set { _trackers = value; OnPropertyChanged(nameof(Trackers)); }
+        }
+
+        public RedmineProject? SelectedProject
+        {
+            get => _selectedProject;
+            set 
+            { 
+                _selectedProject = value; 
+                OnPropertyChanged(nameof(SelectedProject));
+                OnProjectSelected();
+            }
+        }
+
+        public RedmineTracker? SelectedTracker
+        {
+            get => _selectedTracker;
+            set 
+            { 
+                _selectedTracker = value; 
+                OnPropertyChanged(nameof(SelectedTracker));
+                OnTrackerSelected();
+            }
+        }
+
+        public ObservableCollection<CustomFieldControlViewModel> CustomFieldControls
+        {
+            get => _customFieldControls;
+            set { _customFieldControls = value; OnPropertyChanged(nameof(CustomFieldControls)); }
+        }
+
+        public bool IsSubmitting
+        {
+            get => _isSubmitting;
+            set { _isSubmitting = value; OnPropertyChanged(nameof(IsSubmitting)); }
+        }
+
         private void UpdateClock(object? state)
         {
             var now = DateTime.Now;
@@ -119,7 +194,7 @@ namespace BugCapture
             var formatted = $"{dayNames[(int)now.DayOfWeek]}, {monNames[now.Month - 1]} {now.Day:D2}, {now.Year}  {now:HH:mm:ss}";
             Avalonia.Threading.Dispatcher.UIThread.Post(() => CurrentDateTime = formatted);
         }
-        public string ThemeIcon => (Avalonia.Application.Current?.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light) ? "🌙" : "☀️";
+        public string ThemeIcon => (Avalonia.Application.Current?.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light) ? "M12,2A9,9 0 0,0 3,11A9,9 0 0,0 12,20A9,9 0 0,0 21,11A9,9 0 0,0 20.93,9.75C20.35,10.55 19.41,11 18.33,11A4.33,4.33 0 0,1 14,6.67C14,5.27 15.08,4.11 16.5,4C15.17,2.73 13.5,2 12,2Z" : "M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,3.5L14.12,5.62L12,7.74L9.88,5.62L12,3.5M12,20.5L14.12,18.38L12,16.26L9.88,18.38L12,20.5M20.5,12L18.38,14.12L16.26,12L18.38,9.88L20.5,12M3.5,12L5.62,14.12L7.74,12L5.62,9.88L3.5,12M18.38,5.62L18.38,8.62L15.38,5.62H18.38M5.62,18.38V15.38L8.62,18.38H5.62M5.62,5.62H8.62L5.62,8.62V5.62M18.38,18.38H15.38L18.38,15.38V18.38Z";
 
         public MainWindow()
         {
@@ -137,6 +212,141 @@ namespace BugCapture
                 TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
 
             DataContext = this;
+
+            _redmineService = new RedmineService();
+            // Load projects on startup
+            _ = LoadRedmineData();
+        }
+
+        private async Task LoadRedmineData()
+        {
+            StatusText = "Connecting to Redmine...";
+            _redmineService.Initialize(RedmineUrl, RedmineApiKey);
+            
+            var projects = await _redmineService.GetProjectsAsync();
+            Projects.Clear();
+            foreach (var p in projects) Projects.Add(p);
+            
+            StatusText = Projects.Count > 0 ? "Redmine connected." : "Failed to load Redmine projects.";
+        }
+
+        private async void OnProjectSelected()
+        {
+            if (SelectedProject == null) return;
+            
+            StatusText = $"Loading trackers for {SelectedProject.Name}...";
+            var trackers = await _redmineService.GetTrackersAsync();
+            Trackers.Clear();
+            foreach (var t in trackers) Trackers.Add(t);
+            
+            SelectedTracker = null;
+            CustomFieldControls.Clear();
+            StatusText = "Trackers loaded.";
+        }
+
+        private async void OnTrackerSelected()
+        {
+            if (SelectedTracker == null) return;
+
+            StatusText = $"Loading custom fields for {SelectedTracker.Name}...";
+            var allFields = await _redmineService.GetCustomFieldsAsync();
+            
+            CustomFieldControls.Clear();
+            // Filter fields for this tracker if associations exist, or just show relevant ones
+            // For now we show all as many Redmine versions don't return associations in simple calls
+            foreach (var field in allFields)
+            {
+                CustomFieldControls.Add(new CustomFieldControlViewModel(field));
+            }
+            StatusText = "Custom fields ready.";
+        }
+
+        public async void OnSubmitToRedmineClick(object sender, RoutedEventArgs e)
+        {
+            if (SelectedProject == null || SelectedTracker == null)
+            {
+                StatusText = "Please select Project and Tracker.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(BugTitle))
+            {
+                StatusText = "Please enter a Title.";
+                return;
+            }
+
+            IsSubmitting = true;
+            StatusText = "Uploading images...";
+
+            try
+            {
+                var uploads = new List<RedmineUploadToken>();
+                foreach (var img in CapturedImages)
+                {
+                    var token = await _redmineService.UploadFileAsync(img.FilePath);
+                    if (token != null) uploads.Add(token);
+                }
+
+                var issue = new RedmineIssue
+                {
+                    ProjectId = SelectedProject.Id,
+                    TrackerId = SelectedTracker.Id,
+                    Subject = BugTitle,
+                    Description = BugDescription,
+                    Uploads = uploads,
+                    CustomFields = new List<RedmineIssueCustomField>()
+                };
+
+                foreach (var fieldCtrl in CustomFieldControls)
+                {
+                    if (fieldCtrl.Value == null) continue;
+
+                    object? finalValue = fieldCtrl.Value;
+                    if (fieldCtrl.Value is RedmineCustomFieldValue val)
+                    {
+                        finalValue = val.Value;
+                    }
+
+                    if (finalValue != null && !string.IsNullOrEmpty(finalValue.ToString()))
+                    {
+                        issue.CustomFields.Add(new RedmineIssueCustomField
+                        {
+                            Id = fieldCtrl.Field.Id,
+                            Value = finalValue
+                        });
+                    }
+                }
+
+                StatusText = "Creating issue...";
+                var success = await _redmineService.CreateIssueAsync(issue);
+
+                if (success)
+                {
+                    StatusText = "Issue created successfully!";
+                    // Optional: Clear form
+                    BugTitle = string.Empty;
+                    BugDescription = string.Empty;
+                    CapturedImages.Clear();
+                    _evidenceCounter = 1;
+                }
+                else
+                {
+                    StatusText = "Failed to create Redmine issue.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                IsSubmitting = false;
+            }
+        }
+
+        public async void OnRefreshRedmineClick(object sender, RoutedEventArgs e)
+        {
+            await LoadRedmineData();
         }
 
         private async void OnEditorSaveRequested()
@@ -336,7 +546,7 @@ namespace BugCapture
 
         public void OnMinimizeClick(object sender, RoutedEventArgs e)
         {
-            WindowState = WindowState.Minimized;
+            this.Hide();
         }
 
         public void OnMaximizeClick(object sender, RoutedEventArgs e)
