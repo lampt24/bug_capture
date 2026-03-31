@@ -1,0 +1,24 @@
+using System;
+
+namespace BugCapture.Models
+{
+    public class AppSettings
+    {
+        public string RedmineUrl { get; set; } = "http://localhost:3000/";
+        public string RedmineApiKey { get; set; } = string.Empty;
+        public bool IsDarkMode { get; set; } = true;
+        
+        // Last selections
+        public int? LastProjectId { get; set; }
+        public int? LastTrackerId { get; set; }
+        public int? LastAssigneeId { get; set; }
+        
+        // Field values stored by TrackerId -> FieldId -> Value
+        public System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<string, string>> TrackerCustomFields { get; set; } = new();
+
+        public bool IsValid()
+        {
+            return !string.IsNullOrWhiteSpace(RedmineUrl) && !string.IsNullOrWhiteSpace(RedmineApiKey);
+        }
+    }
+}

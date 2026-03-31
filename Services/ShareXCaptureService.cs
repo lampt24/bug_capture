@@ -53,7 +53,7 @@ namespace BugCapture.Services
             var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Captures");
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-            var fileName = $"Capture_{DateTime.Now:yyyyMMdd_HHmmss}_{type}.png";
+            var fileName = $"Evidence_{DateTime.Now:yyyyMMddHHmmssfff}.png";
             var filePath = Path.Combine(dir, fileName);
             bitmap.Save(filePath, ImageFormat.Png);
 

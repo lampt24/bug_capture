@@ -1,0 +1,76 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="300"
+        x:Class="BugCapture.SettingsWindow"
+        Title="REDMINE SETTINGS"
+        Width="450" Height="300"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="Full"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{DynamicResource BgBrush}">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+            <Setter Property="Margin" Value="0,0,0,5" />
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="Background"   Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderBrush"  Value="{DynamicResource BorderBrush}" />
+            <Setter Property="Foreground"   Value="{DynamicResource TextBrush}" />
+            <Setter Property="CaretBrush"   Value="{DynamicResource AccentBrush}" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Padding"      Value="10,6" />
+            <Setter Property="FontSize"     Value="13" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        </Style>
+        <Style Selector="Button.dash-btn">
+            <Setter Property="Background"       Value="{DynamicResource CardBrush}" />
+            <Setter Property="BorderBrush"      Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness"  Value="1" />
+            <Setter Property="CornerRadius"     Value="0" />
+            <Setter Property="Padding"          Value="14,7" />
+            <Setter Property="FontSize"         Value="12" />
+            <Setter Property="FontWeight"       Value="Medium" />
+            <Setter Property="Foreground"       Value="{DynamicResource TextBrush}" />
+        </Style>
+        <Style Selector="Button.dash-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="REDMINE CONFIGURATION" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+            <TextBlock Text="Cấu hình kết nối Redmine để gửi báo cáo lỗi." FontSize="12" Foreground="{DynamicResource TextBrush}" Opacity="0.7" />
+        </StackPanel>
+
+        <!-- Body -->
+        <StackPanel Grid.Row="1" Spacing="15">
+            <StackPanel>
+                <TextBlock Text="REDMINE URL" Classes="label" />
+                <TextBox Name="UrlTextBox" Watermark="http://redmine.yourdomain.com/" />
+            </StackPanel>
+
+            <StackPanel>
+                <TextBlock Text="API ACCESS KEY (TOKEN)" Classes="label" />
+                <TextBox Name="ApiKeyTextBox" PasswordChar="*" Watermark="Nhập mã token từ hồ sơ cá nhân Redmine..." />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,20,0,0">
+            <Button Name="CancelButton" Content="CANCEL" Classes="dash-btn" Width="80" 
+                    Background="Transparent" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" />
+            <Button Name="SaveButton" Content="SAVE" Classes="dash-btn" Width="100" />
+        </StackPanel>
+    </Grid>
+</Window>

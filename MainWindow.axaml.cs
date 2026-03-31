@@ -11,15 +11,16 @@ using ShareX.ImageEditor.Presentation.ViewModels;
 using Avalonia.Input;
 using System.Collections.Generic;
 using System.Net.Http;
-using BugCapture.Services;
-using BugCapture.Models;
-using System.ComponentModel;
+using ShareX.HelpersLib;
+using Redmine.Net.Api.Types;
+using Redmine.Net.Api;
 
 namespace BugCapture
 {
     public partial class MainWindow : Window, System.ComponentModel.INotifyPropertyChanged
     {
         private readonly ShareXCaptureService _captureService;
+        private bool _isInitialized = false;
         private int _evidenceCounter = 1;
         private string _statusText = "Ready";
         private string _bugTitle = string.Empty;
@@ -33,15 +34,19 @@ namespace BugCapture
         private double _expandedHeight = 850;
         private string _currentDateTime = string.Empty;
         private System.Threading.Timer? _clockTimer;
+        private readonly Logger _logger = new Logger();
 
         // Redmine Integration
         private readonly RedmineService _redmineService;
-        private string _redmineUrl = "http://localhost:3000/";
-        private string _redmineApiKey = "30c48cd55e4545693adbe9a99bc3c1afc1fca27d";
-        private ObservableCollection<RedmineProject> _projects = new();
-        private ObservableCollection<RedmineTracker> _trackers = new();
-        private RedmineProject? _selectedProject;
-        private RedmineTracker? _selectedTracker;
+        private int _defaultStatusId = 1;
+        private string _redmineUrl = string.Empty;
+        private string _redmineApiKey = string.Empty;
+        private ObservableCollection<Project> _projects = new();
+        private ObservableCollection<ProjectTracker> _trackers = new();
+        private Project? _selectedProject;
+        private ProjectTracker? _selectedTracker;
+        private ObservableCollection<ProjectMembership> _memberships = new();
+        private ProjectMembership? _selectedMembership;
         private ObservableCollection<CustomFieldControlViewModel> _customFieldControls = new();
         private bool _isSubmitting = false;
 
@@ -139,38 +144,102 @@ namespace BugCapture
             set { _redmineApiKey = value; OnPropertyChanged(nameof(RedmineApiKey)); }
         }
 
-        public ObservableCollection<RedmineProject> Projects
+        public ObservableCollection<Project> Projects
         {
             get => _projects;
             set { _projects = value; OnPropertyChanged(nameof(Projects)); }
         }
 
-        public ObservableCollection<RedmineTracker> Trackers
+        public ObservableCollection<ProjectTracker> Trackers
         {
             get => _trackers;
             set { _trackers = value; OnPropertyChanged(nameof(Trackers)); }
         }
 
-        public RedmineProject? SelectedProject
+        public Project? SelectedProject
         {
             get => _selectedProject;
-            set 
-            { 
-                _selectedProject = value; 
-                OnPropertyChanged(nameof(SelectedProject));
-                OnProjectSelected();
+            set
+            {
+                if (_selectedProject != value)
+                {
+                    _selectedProject = value;
+                    OnPropertyChanged(nameof(SelectedProject));
+                    OnProjectSelected();
+                    SaveSelections();
+                }
             }
         }
 
-        public RedmineTracker? SelectedTracker
+        public ProjectTracker? SelectedTracker
         {
             get => _selectedTracker;
+            set
+            {
+                if (_selectedTracker != value)
+                {
+                    // Save custom fields for the outgoing tracker
+                    if (_isInitialized) SaveCustomFieldValues();
+
+                    _selectedTracker = value;
+                    OnPropertyChanged(nameof(SelectedTracker));
+                    OnTrackerSelected();
+                    SaveSelections();
+                }
+            }
+        }
+
+        public ObservableCollection<ProjectMembership> Memberships
+        {
+            get => _memberships;
+            set { _memberships = value; OnPropertyChanged(nameof(Memberships)); }
+        }
+
+        public ProjectMembership? SelectedMembership
+        {
+            get => _selectedMembership;
             set 
             { 
-                _selectedTracker = value; 
-                OnPropertyChanged(nameof(SelectedTracker));
-                OnTrackerSelected();
+                if (_selectedMembership != value)
+                {
+                    _selectedMembership = value; 
+                    OnPropertyChanged(nameof(SelectedMembership)); 
+                    SaveSelections();
+                }
             }
+        }
+
+        private void SaveSelections()
+        {
+            // Don't save if we're still initializing
+            if (!_isInitialized) return;
+
+            var settings = SettingsService.Load();
+            settings.LastProjectId = SelectedProject?.Id;
+            settings.LastTrackerId = SelectedTracker?.Id;
+            settings.LastAssigneeId = SelectedMembership?.User?.Id;
+            SettingsService.Save(settings);
+        }
+
+        private void SaveCustomFieldValues()
+        {
+            if (!_isInitialized || SelectedTracker == null) return;
+
+            var settings = SettingsService.Load();
+            var trackerIdStr = SelectedTracker.Id.ToString();
+
+            if (!settings.TrackerCustomFields.ContainsKey(trackerIdStr))
+                settings.TrackerCustomFields[trackerIdStr] = new();
+
+            foreach (var ctrl in CustomFieldControls)
+            {
+                if (ctrl.Field != null)
+                {
+                    var fieldIdStr = ctrl.Field.Id.ToString();
+                    settings.TrackerCustomFields[trackerIdStr][fieldIdStr] = ctrl.Value?.ToString() ?? string.Empty;
+                }
+            }
+            SettingsService.Save(settings);
         }
 
         public ObservableCollection<CustomFieldControlViewModel> CustomFieldControls
@@ -187,12 +256,8 @@ namespace BugCapture
 
         private void UpdateClock(object? state)
         {
-            var now = DateTime.Now;
-            var dayNames = new[] { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
-            var monNames = new[] { "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-                                   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
-            var formatted = $"{dayNames[(int)now.DayOfWeek]}, {monNames[now.Month - 1]} {now.Day:D2}, {now.Year}  {now:HH:mm:ss}";
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => CurrentDateTime = formatted);
+            var now = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => CurrentDateTime = now);
         }
         public string ThemeIcon => (Avalonia.Application.Current?.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light) ? "M12,2A9,9 0 0,0 3,11A9,9 0 0,0 12,20A9,9 0 0,0 21,11A9,9 0 0,0 20.93,9.75C20.35,10.55 19.41,11 18.33,11A4.33,4.33 0 0,1 14,6.67C14,5.27 15.08,4.11 16.5,4C15.17,2.73 13.5,2 12,2Z" : "M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,3.5L14.12,5.62L12,7.74L9.88,5.62L12,3.5M12,20.5L14.12,18.38L12,16.26L9.88,18.38L12,20.5M20.5,12L18.38,14.12L16.26,12L18.38,9.88L20.5,12M3.5,12L5.62,14.12L7.74,12L5.62,9.88L3.5,12M18.38,5.62L18.38,8.62L15.38,5.62H18.38M5.62,18.38V15.38L8.62,18.38H5.62M5.62,5.62H8.62L5.62,8.62V5.62M18.38,18.38H15.38L18.38,15.38V18.38Z";
 
@@ -200,6 +265,24 @@ namespace BugCapture
         {
             InitializeComponent();
             _captureService = new ShareXCaptureService();
+            // Setup logging to file in LocalAppData (safer)
+            try
+            {
+                string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string logDir = System.IO.Path.Combine(appData, "BugCapture", "logs");
+                if (!System.IO.Directory.Exists(logDir)) System.IO.Directory.CreateDirectory(logDir);
+                string logPath = System.IO.Path.Combine(logDir, "bugcapture_ui.log");
+
+                _logger = new Logger(logPath);
+                _logger.AsyncWrite = false;
+                _logger.WriteLine($"--- UI Initialized at {DateTime.Now} ---");
+                StatusText = $"Log: {logPath}";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Logger Init Error: {ex.Message}";
+            }
+
             EditorViewModel.ShowTaskModeButtons = false;
 
             // Subscribe to editor events
@@ -214,49 +297,168 @@ namespace BugCapture
             DataContext = this;
 
             _redmineService = new RedmineService();
-            // Load projects on startup
-            _ = LoadRedmineData();
+            // Load initial settings
+            var settings = SettingsService.Load();
+            RedmineUrl = settings.RedmineUrl;
+            RedmineApiKey = settings.RedmineApiKey;
+
+            // Apply Theme
+            if (Avalonia.Application.Current != null)
+            {
+                Avalonia.Application.Current.RequestedThemeVariant = 
+                    settings.IsDarkMode ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
+            }
+        }
+
+        protected override async void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            if (_isInitialized) return;
+
+            var settings = SettingsService.Load();
+            if (!settings.IsValid())
+            {
+                await ShowSettingsDialog();
+            }
+            else
+            {
+                await LoadRedmineData();
+            }
+            _isInitialized = true;
+        }
+
+        private async Task ShowSettingsDialog()
+        {
+            var sw = new SettingsWindow();
+            await sw.ShowDialog(this);
+            if (sw.IsSaved)
+            {
+                RedmineUrl = sw.CurrentSettings.RedmineUrl;
+                RedmineApiKey = sw.CurrentSettings.RedmineApiKey;
+                _ = LoadRedmineData();
+            }
+            else
+            {
+                // If closing/cancelling and setup is still invalid, exit app
+                var settings = SettingsService.Load();
+                if (!settings.IsValid())
+                {
+                    Close();
+                }
+            }
+        }
+
+        private async void OnOpenSettingsClick(object sender, RoutedEventArgs e)
+        {
+            await ShowSettingsDialog();
         }
 
         private async Task LoadRedmineData()
         {
             StatusText = "Connecting to Redmine...";
             _redmineService.Initialize(RedmineUrl, RedmineApiKey);
-            
+
             var projects = await _redmineService.GetProjectsAsync();
             Projects.Clear();
             foreach (var p in projects) Projects.Add(p);
+
+            // Fetch default status ID
+            var statuses = await _redmineService.GetStatusesAsync();
+            var defStatus = statuses.FirstOrDefault(s => s.IsDefault) ?? statuses.FirstOrDefault();
+            if (defStatus != null)
+            {
+                _defaultStatusId = defStatus.Id;
+                _logger.WriteLine($"Redmine: Default Status ID set to {_defaultStatusId} ({defStatus.Name})");
+            }
+
+            // Restore Selection
+            var settings = SettingsService.Load();
+            if (settings.LastProjectId.HasValue)
+            {
+                SelectedProject = Projects.FirstOrDefault(p => p.Id == settings.LastProjectId.Value);
+            }
             
+            if (SelectedProject == null)
+            {
+                SelectedProject = Projects.FirstOrDefault();
+            }
+
             StatusText = Projects.Count > 0 ? "Redmine connected." : "Failed to load Redmine projects.";
         }
 
         private async void OnProjectSelected()
         {
-            if (SelectedProject == null) return;
-            
-            StatusText = $"Loading trackers for {SelectedProject.Name}...";
-            var trackers = await _redmineService.GetTrackersAsync();
+            CustomFieldControls.Clear(); // Clear fields first
             Trackers.Clear();
-            foreach (var t in trackers) Trackers.Add(t);
-            
             SelectedTracker = null;
-            CustomFieldControls.Clear();
-            StatusText = "Trackers loaded.";
+            Memberships.Clear();
+
+            if (SelectedProject != null)
+            {
+                var trackers = await _redmineService.GetTrackersForProjectAsync(SelectedProject.Identifier);
+                Trackers = new ObservableCollection<ProjectTracker>(trackers);
+
+                var members = await _redmineService.GetMembershipsAsync(SelectedProject.Identifier, SelectedProject.Id);
+                Memberships = new ObservableCollection<ProjectMembership>(members);
+
+                // Restore Selections
+                var settings = SettingsService.Load();
+                if (settings.LastTrackerId.HasValue)
+                {
+                    SelectedTracker = Trackers.FirstOrDefault(t => t.Id == settings.LastTrackerId.Value);
+                }
+                if (SelectedTracker == null) SelectedTracker = Trackers.FirstOrDefault();
+
+                if (settings.LastAssigneeId.HasValue)
+                {
+                    SelectedMembership = Memberships.FirstOrDefault(m => m.User != null && m.User.Id == settings.LastAssigneeId.Value);
+                }
+                if (SelectedMembership == null) SelectedMembership = Memberships.FirstOrDefault();
+            }
         }
 
         private async void OnTrackerSelected()
         {
+            CustomFieldControls.Clear(); // Always clear first
+
             if (SelectedTracker == null) return;
 
             StatusText = $"Loading custom fields for {SelectedTracker.Name}...";
             var allFields = await _redmineService.GetCustomFieldsAsync();
-            
-            CustomFieldControls.Clear();
-            // Filter fields for this tracker if associations exist, or just show relevant ones
-            // For now we show all as many Redmine versions don't return associations in simple calls
+            var settings = SettingsService.Load();
+            var trackerIdStr = SelectedTracker.Id.ToString();
+
             foreach (var field in allFields)
             {
-                CustomFieldControls.Add(new CustomFieldControlViewModel(field));
+                bool trackerMatch = field.Trackers == null || field.Trackers.Count == 0 ||
+                                   field.Trackers.Any(t => t.Id == SelectedTracker.Id);
+
+                if (trackerMatch)
+                {
+                    var viewModel = new CustomFieldControlViewModel(field);
+                    
+                    // Restore saved value if exists
+                    if (settings.TrackerCustomFields.TryGetValue(trackerIdStr, out var fieldValues))
+                    {
+                        if (fieldValues.TryGetValue(field.Id.ToString(), out var savedVal))
+                        {
+                            if (!string.IsNullOrEmpty(savedVal))
+                            {
+                                viewModel.Value = savedVal;
+                            }
+                        }
+                    }
+                    
+                    viewModel.PropertyChanged += (s, ev) => 
+                    {
+                        if (ev.PropertyName == nameof(CustomFieldControlViewModel.Value))
+                        {
+                            SaveCustomFieldValues();
+                        }
+                    };
+
+                    CustomFieldControls.Add(viewModel);
+                }
             }
             StatusText = "Custom fields ready.";
         }
@@ -271,7 +473,13 @@ namespace BugCapture
 
             if (string.IsNullOrWhiteSpace(BugTitle))
             {
-                StatusText = "Please enter a Title.";
+                StatusText = "Please enter a Title!!!";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(BugDescription))
+            {
+                StatusText = "Please enter a Description!!!";
                 return;
             }
 
@@ -280,40 +488,46 @@ namespace BugCapture
 
             try
             {
-                var uploads = new List<RedmineUploadToken>();
+                var uploads = new List<Upload>();
                 foreach (var img in CapturedImages)
                 {
-                    var token = await _redmineService.UploadFileAsync(img.FilePath);
-                    if (token != null) uploads.Add(token);
+                    var upload = await _redmineService.UploadFileAsync(img.FilePath);
+                    if (upload != null) uploads.Add(upload);
                 }
 
-                var issue = new RedmineIssue
+                var issue = new Issue
                 {
-                    ProjectId = SelectedProject.Id,
-                    TrackerId = SelectedTracker.Id,
+                    Project = IdentifiableName.Create<Project>(SelectedProject.Id),
+                    Tracker = IdentifiableName.Create<Tracker>(SelectedTracker.Id),
+                    Status = IdentifiableName.Create<IssueStatus>(_defaultStatusId),
+                    Priority = IdentifiableName.Create<IssuePriority>(2), // Normal
                     Subject = BugTitle,
                     Description = BugDescription,
                     Uploads = uploads,
-                    CustomFields = new List<RedmineIssueCustomField>()
+                    CustomFields = new List<IssueCustomField>(),
+                    AssignedTo = SelectedMembership?.User
                 };
 
                 foreach (var fieldCtrl in CustomFieldControls)
                 {
-                    if (fieldCtrl.Value == null) continue;
-
-                    object? finalValue = fieldCtrl.Value;
-                    if (fieldCtrl.Value is RedmineCustomFieldValue val)
+                    if (fieldCtrl.Value == null) 
                     {
-                        finalValue = val.Value;
+                        _logger?.WriteLine($"[Submit] Field {fieldCtrl.Field.Name} (Id:{fieldCtrl.Field.Id}) is NULL/Empty. Skipping.");
+                        continue;
                     }
 
-                    if (finalValue != null && !string.IsNullOrEmpty(finalValue.ToString()))
+                    string? finalValue = fieldCtrl.Value?.ToString();
+                    _logger?.WriteLine($"[Submit] Field {fieldCtrl.Field.Name} (Id:{fieldCtrl.Field.Id}) -> Extracted string finalValue: '{finalValue}'");
+
+                    if (!string.IsNullOrEmpty(finalValue))
                     {
-                        issue.CustomFields.Add(new RedmineIssueCustomField
-                        {
-                            Id = fieldCtrl.Field.Id,
-                            Value = finalValue
-                        });
+                        var cf = IssueCustomField.CreateSingle(fieldCtrl.Field.Id, fieldCtrl.Field.Name, finalValue);
+                        issue.CustomFields.Add(cf);
+                        _logger?.WriteLine($"[Submit] ADDED IssueCustomField: Name='{cf.Name}', Id={cf.Id}, Multiple={cf.Multiple}, final attached value='{finalValue}'");
+                    }
+                    else
+                    {
+                        _logger?.WriteLine($"[Submit] finalValue evaluated to NullOrEmpty for {fieldCtrl.Field.Name}. Skipping addition to issue.");
                     }
                 }
 
@@ -328,6 +542,14 @@ namespace BugCapture
                     BugDescription = string.Empty;
                     CapturedImages.Clear();
                     _evidenceCounter = 1;
+
+                    // Clear currently editing image and editor state
+                    _currentlyEditingImage = null;
+                    EditorViewModel.ClearCommand.Execute(null);
+                    EditorViewModel.PreviewImage = null;
+                    EditorViewModel.ImageFilePath = null;
+                    EditorViewModel.IsDirty = false;
+                    EditorViewModel.ImageDimensions = "No image";
                 }
                 else
                 {
@@ -360,6 +582,7 @@ namespace BugCapture
                 {
                     if (snapshot != null)
                     {
+                        _logger.WriteLine($"Saving image to {_currentlyEditingImage.FilePath}");
                         // Save to disk
                         using (var image = SkiaSharp.SKImage.FromBitmap(snapshot))
                         using (var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100))
@@ -391,6 +614,7 @@ namespace BugCapture
             catch (System.Exception ex)
             {
                 StatusText = $"Save error: {ex.Message}";
+                _logger.WriteException(ex, "Save Error");
             }
         }
 
@@ -414,9 +638,9 @@ namespace BugCapture
                     }
 
                     StatusText = $"Copy: Snapshot size {snapshot.Width}x{snapshot.Height}. Encoding...";
-                    
+
                     // Save to a debug file in the project folder for manual verification
-                    try 
+                    try
                     {
                         string debugPath = System.IO.Path.Combine(@"d:\DEVERLOPMENT\BugCapture", "debug_copy.png");
                         using (var debugImage = SkiaSharp.SKImage.FromBitmap(snapshot))
@@ -425,7 +649,8 @@ namespace BugCapture
                         {
                             debugData.SaveTo(fs);
                         }
-                    } catch { /* Ignore debug save errors */ }
+                    }
+                    catch { /* Ignore debug save errors */ }
 
                     using (var image = SkiaSharp.SKImage.FromBitmap(snapshot))
                     using (var pngData = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100))
@@ -450,7 +675,7 @@ namespace BugCapture
                                 {
                                     // Set professional options (enables DIB/HTML/PNG combo)
                                     ShareX.HelpersLib.HelpersOptions.UseAlternativeClipboardCopyImage = true;
-                                    
+
                                     // Perform copy using ShareX's battle-tested helper
                                     // Passing null for filename to avoid HTML fragment (fixes Excel Ctrl+V)
                                     if (ShareX.HelpersLib.ClipboardHelpers.CopyImage(drawingBmp, null))
@@ -492,6 +717,7 @@ namespace BugCapture
 
         public async void OnCaptureRegionClick(object sender, RoutedEventArgs e)
         {
+            _logger.WriteLine("User Clicked: Capture Region");
             this.Hide();
             await System.Threading.Tasks.Task.Delay(250); // Give OS time to hide the window
             try
@@ -502,8 +728,8 @@ namespace BugCapture
                     result.CaptureType = $"Evidence_No.{_evidenceCounter++:D2}";
                     CapturedImages.Add(result);
 
-                    // Auto-select the new capture
-                    OnThumbnailClickInternal(result);
+                    // Auto-select the new capture, but don't force show the editor if it was hidden
+                    OnThumbnailClickInternal(result, forceShowEditor: false);
                 }
             }
             finally
@@ -515,6 +741,7 @@ namespace BugCapture
 
         public async void OnCaptureScrollClick(object sender, RoutedEventArgs e)
         {
+            _logger.WriteLine("User Clicked: Capture Scroll");
             this.Hide();
             await System.Threading.Tasks.Task.Delay(250); // Give OS time to hide the window
             try
@@ -525,8 +752,8 @@ namespace BugCapture
                     result.CaptureType = $"Evidence_No.{_evidenceCounter++:D2}";
                     CapturedImages.Add(result);
 
-                    // Auto-select the new capture
-                    OnThumbnailClickInternal(result);
+                    // Auto-select the new capture, but don't force show the editor if it was hidden
+                    OnThumbnailClickInternal(result, forceShowEditor: false);
                 }
             }
             finally
@@ -551,9 +778,9 @@ namespace BugCapture
 
         public void OnMaximizeClick(object sender, RoutedEventArgs e)
         {
-            WindowState = WindowState == WindowState.Maximized 
-                ? WindowState.Normal 
-                : WindowState.Maximized;
+            WindowState = WindowState == Avalonia.Controls.WindowState.Maximized
+                ? Avalonia.Controls.WindowState.Normal
+                : Avalonia.Controls.WindowState.Maximized;
         }
 
         public void OnCloseClick(object sender, RoutedEventArgs e)
@@ -565,11 +792,16 @@ namespace BugCapture
         {
             if (Avalonia.Application.Current != null)
             {
-                Avalonia.Application.Current.RequestedThemeVariant = 
-                    Avalonia.Application.Current.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark 
-                        ? Avalonia.Styling.ThemeVariant.Light 
-                        : Avalonia.Styling.ThemeVariant.Dark;
+                var isDark = Avalonia.Application.Current.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark;
                 
+                Avalonia.Application.Current.RequestedThemeVariant =
+                    isDark ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+
+                // Save setting
+                var settings = SettingsService.Load();
+                settings.IsDarkMode = !isDark;
+                SettingsService.Save(settings);
+
                 OnPropertyChanged(nameof(ThemeIcon));
             }
         }
@@ -578,10 +810,15 @@ namespace BugCapture
         {
             if (sender is Button button && button.DataContext is CapturedImage image)
             {
+                _logger.WriteLine($"User Clicked: Delete Image {image.CaptureType}");
                 if (_currentlyEditingImage == image)
                 {
                     _currentlyEditingImage = null;
                     EditorViewModel.ClearCommand.Execute(null);
+                    EditorViewModel.PreviewImage = null;
+                    EditorViewModel.ImageFilePath = null;
+                    EditorViewModel.ImageDimensions = "No image";
+                    EditorViewModel.IsDirty = false;
                 }
                 CapturedImages.Remove(image);
             }
@@ -591,16 +828,16 @@ namespace BugCapture
         {
             if (sender is Avalonia.Controls.Button btn && btn.DataContext is CapturedImage image)
             {
-                OnThumbnailClickInternal(image);
+                OnThumbnailClickInternal(image, forceShowEditor: true);
             }
         }
 
-        private void OnThumbnailClickInternal(CapturedImage image)
+        private void OnThumbnailClickInternal(CapturedImage image, bool forceShowEditor = true)
         {
             if (image == null) return;
 
-            // Safety check: confirm if switching while having unsaved changes
-            if (EditorViewModel.IsDirty)
+            // Safety check: only warn if we are actually editing an image and there are changes
+            if (_currentlyEditingImage != null && EditorViewModel.IsDirty)
             {
                 var result = System.Windows.Forms.MessageBox.Show(
                     "You have unsaved changes on the current image. Do you want to discard them and load a different image?",
@@ -620,12 +857,15 @@ namespace BugCapture
                 item.IsSelected = (item == image);
             }
 
-            // Force editor visibility when selecting an image
-            IsEditorVisible = true;
+            // Show editor only if forced (manual click) or already visible
+            if (forceShowEditor)
+            {
+                IsEditorVisible = true;
+            }
 
             _currentlyEditingImage = image;
             StatusText = $"Editing {image.CaptureType}...";
-            
+
             try
             {
                 if (System.IO.File.Exists(image.FilePath))
@@ -633,7 +873,7 @@ namespace BugCapture
                     using (var stream = System.IO.File.OpenRead(image.FilePath))
                     {
                         var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
-                        
+
                         // Explicitly clear editor (annotations, history, etc.) before loading new image
                         EditorViewModel.ClearCommand.Execute(null);
 
@@ -642,7 +882,7 @@ namespace BugCapture
                         EditorViewModel.LastSavedPath = image.FilePath;
                         EditorViewModel.ImageFilePath = image.FilePath;
                         EditorViewModel.ImageDimensions = $"{bitmap.Size.Width} x {bitmap.Size.Height}";
-                        
+
                         // Reset dirty flag after all internal load-time events (HistoryChanged, etc.) have processed.
                         // Those events often run at Normal priority, so we use Background priority to ensure this is the final word.
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>

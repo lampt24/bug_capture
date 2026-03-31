@@ -15,9 +15,13 @@
 
   <ItemGroup>
     <Compile Remove="ShareX\**" />
+    <Compile Remove="tools_inspect\**" />
     <EmbeddedResource Remove="ShareX\**" />
+    <EmbeddedResource Remove="tools_inspect\**" />
     <None Remove="ShareX\**" />
+    <None Remove="tools_inspect\**" />
     <AvaloniaXaml Remove="ShareX\**" />
+    <AvaloniaXaml Remove="tools_inspect\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +36,7 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
     <PackageReference Include="Avalonia.Controls.ColorPicker" Version="11.3.12" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="redmine-api" Version="4.65.0" />
     <PackageReference Include="SkiaSharp" Version="2.88.9" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
