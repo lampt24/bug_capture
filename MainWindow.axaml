@@ -273,7 +273,7 @@
         <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="12,10,12,10">
 
             <!-- ── Row 0: Bug Description ── -->
-            <Grid Grid.Row="0" Margin="12,10,12,15" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+            <Grid Grid.Row="0" Margin="12,10,12,15" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                 <!-- Title Row -->
                 <TextBlock Grid.Row="0" Grid.Column="0" Classes="card-label" Text="TIÊU ĐỀ" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
                 <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding BugTitle}"
@@ -287,35 +287,37 @@
                          VerticalAlignment="Top" VerticalContentAlignment="Top"
                          Watermark="Mô tả chi tiết: bước tái hiện, kết quả mong đợi, kết quả thực tế..." />
 
-                <!-- Redmine Fields Combined Row -->
-                <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="Auto,1.5*,Auto,12,Auto,1*,12,Auto,1.5*" VerticalAlignment="Center" Margin="0,0,0,10">
+                <!-- Combined Redmine Row (Project, Tracker, Assignee) -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="card-label" Text="PROJECT" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
+                <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto,*,Auto,*" Margin="0,0,0,10">
                     <!-- Project -->
-                    <TextBlock Grid.Column="0" Classes="card-label" Text="PROJECT" VerticalAlignment="Center" Width="80" />
-                    <ComboBox Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Stretch" 
-                              Height="32" FontSize="12" Padding="8,4" 
-                              BorderThickness="0" CornerRadius="0"
-                              Background="{DynamicResource SurfaceBrush}"
-                              ItemsSource="{Binding Projects}"
-                              SelectedItem="{Binding SelectedProject}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <Button Grid.Column="2" Classes="dash-btn" Width="28" Height="32" Margin="4,0,0,0"
-                            Click="OnRefreshRedmineClick" ToolTip.Tip="Làm mới Redmine">
-                        <PathIcon Data="M19,12H17.73L19.05,10.68C19.6,10.13 19.6,9.24 19.05,8.69L15.31,4.95C14.76,4.4 13.87,4.4 13.32,4.95L12,6.27V5C12,4.23 11.37,3.6 10.6,3.6H4.4C3.63,3.6 3,4.23 3,5V11C3,11.77 3.63,12.4 4.4,12.4H5.67L4.35,13.72C3.8,14.27 3.8,15.16 4.35,15.71L8.09,19.45C8.64,20 9.53,20 10.08,19.45L11.4,18.13V19.4C11.4,20.17 12.03,20.8 12.8,20.8H19C19.77,20.8 20.4,20.17 20.4,19.4V13.4C20.4,12.63 19.77,12 19,12M6,11V6H10V11H6Z" Width="12" Height="12" />
-                    </Button>
+                    <Grid Grid.Column="0" ColumnDefinitions="*,Auto" Margin="0,0,12,0">
+                        <ComboBox HorizontalAlignment="Stretch" 
+                                  Height="32" FontSize="12" Padding="8,4" 
+                                  BorderThickness="0" CornerRadius="0"
+                                  Background="{DynamicResource SurfaceBrush}"
+                                  ItemsSource="{Binding Projects}"
+                                  SelectedItem="{Binding SelectedProject}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button Grid.Column="1" Classes="dash-btn" Width="28" Height="32" Margin="4,0,0,0"
+                                Click="OnRefreshRedmineClick" ToolTip.Tip="Làm mới Redmine">
+                            <PathIcon Data="M19,12H17.73L19.05,10.68C19.6,10.13 19.6,9.24 19.05,8.69L15.31,4.95C14.76,4.4 13.87,4.4 13.32,4.95L12,6.27V5C12,4.23 11.37,3.6 10.6,3.6H4.4C3.63,3.6 3,4.23 3,5V11C3,11.77 3.63,12.4 4.4,12.4H5.67L4.35,13.72C3.8,14.27 3.8,15.16 4.35,15.71L8.09,19.45C8.64,20 9.53,20 10.08,19.45L11.4,18.13V19.4C11.4,20.17 12.03,20.8 12.8,20.8H19C19.77,20.8 20.4,20.17 20.4,19.4V13.4C20.4,12.63 19.77,12 19,12M6,11V6H10V11H6Z" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
 
                     <!-- Tracker -->
-                    <TextBlock Grid.Column="4" Classes="card-label" Text="TRACKER" VerticalAlignment="Center" Margin="12,0,0,0" />
-                    <ComboBox Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Stretch" 
+                    <TextBlock Grid.Column="1" Classes="card-label" Text="TRACKER" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <ComboBox Grid.Column="2" HorizontalAlignment="Stretch" 
                               Height="32" FontSize="12" Padding="8,4" 
                               BorderThickness="0" CornerRadius="0"
                               Background="{DynamicResource SurfaceBrush}"
                               ItemsSource="{Binding Trackers}"
-                              SelectedItem="{Binding SelectedTracker}" Margin="12,0,0,0">
+                              SelectedItem="{Binding SelectedTracker}" Margin="0,0,12,0">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Name}" />
@@ -324,14 +326,14 @@
                     </ComboBox>
 
                     <!-- Assignee -->
-                    <TextBlock Grid.Column="7" Classes="card-label" Text="ASSIGNEE" VerticalAlignment="Center" Margin="12,0,0,0" />
-                    <ComboBox Grid.Column="8" VerticalAlignment="Center" HorizontalAlignment="Stretch" 
+                    <TextBlock Grid.Column="3" Classes="card-label" Text="ASSIGNEE" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <ComboBox Grid.Column="4" HorizontalAlignment="Stretch" 
                               Height="32" FontSize="12" Padding="8,4" 
                               BorderThickness="0" CornerRadius="0"
                               Background="{DynamicResource SurfaceBrush}"
                               ItemsSource="{Binding Memberships}"
                               PlaceholderText="Chọn (Tất cả)"
-                              SelectedItem="{Binding SelectedMembership}" Margin="12,0,0,0">
+                              SelectedItem="{Binding SelectedMembership}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding User.Name}" />
@@ -340,17 +342,17 @@
                     </ComboBox>
                 </Grid>
 
-                <!-- Dynamic Custom Fields -->
-                <ItemsControl Grid.Row="3" Grid.Column="1" ItemsSource="{Binding CustomFieldControls}" Margin="0,2,0,0">
+                <!-- Dynamic Custom Fields (3 items per row) -->
+                <ItemsControl Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding CustomFieldControls}" Margin="0,0,0,0">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" ItemWidth="400" />
+                            <UniformGrid Columns="3" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="models:CustomFieldControlViewModel">
-                            <Grid ColumnDefinitions="80,*" Margin="0,5,20,5">
-                                <TextBlock Grid.Column="0" Classes="card-label" Text="{Binding DisplayName}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            <Grid ColumnDefinitions="112,*" Margin="0,0,12,10">
+                                <TextBlock Grid.Column="0" Classes="card-label" Text="{Binding DisplayName}" VerticalAlignment="Center" TextWrapping="Wrap" Width="100" Margin="0,0,12,0" />
                                 
                                 <Panel Grid.Column="1">
                                     <!-- List Template -->
