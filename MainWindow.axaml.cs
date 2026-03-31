@@ -24,6 +24,7 @@ namespace BugCapture
         private int _evidenceCounter = 1;
         private string _statusText = "Ready";
         private string _bugTitle = string.Empty;
+        private string _bugPrefix = string.Empty;
         private string _bugDescription = string.Empty;
         private string _assignee = string.Empty;
         private string _category = string.Empty;
@@ -57,6 +58,12 @@ namespace BugCapture
         {
             get => _bugTitle;
             set { _bugTitle = value; OnPropertyChanged(nameof(BugTitle)); }
+        }
+
+        public string BugPrefix
+        {
+            get => _bugPrefix;
+            set { _bugPrefix = value; OnPropertyChanged(nameof(BugPrefix)); SaveSelections(); }
         }
 
         public string BugDescription
@@ -218,6 +225,7 @@ namespace BugCapture
             settings.LastProjectId = SelectedProject?.Id;
             settings.LastTrackerId = SelectedTracker?.Id;
             settings.LastAssigneeId = SelectedMembership?.User?.Id;
+            settings.LastIssuePrefix = BugPrefix;
             SettingsService.Save(settings);
         }
 
@@ -308,6 +316,8 @@ namespace BugCapture
                 Avalonia.Application.Current.RequestedThemeVariant = 
                     settings.IsDarkMode ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
             }
+
+            _bugPrefix = settings.LastIssuePrefix;
         }
 
         protected override async void OnOpened(EventArgs e)
@@ -495,14 +505,24 @@ namespace BugCapture
                     if (upload != null) uploads.Add(upload);
                 }
 
+                var finalDescription = BugDescription;
+                if (uploads.Count > 0)
+                {
+                    finalDescription += "\n\n" + (System.Globalization.CultureInfo.CurrentCulture.Name.StartsWith("vi") ? "--- Bằng chứng (Evidence): ---" : "--- Evidence: ---") + "\n";
+                    foreach (var upload in uploads)
+                    {
+                        finalDescription += $"\n!{upload.FileName}!";
+                    }
+                }
+
                 var issue = new Issue
                 {
                     Project = IdentifiableName.Create<Project>(SelectedProject.Id),
                     Tracker = IdentifiableName.Create<Tracker>(SelectedTracker.Id),
                     Status = IdentifiableName.Create<IssueStatus>(_defaultStatusId),
                     Priority = IdentifiableName.Create<IssuePriority>(2), // Normal
-                    Subject = BugTitle,
-                    Description = BugDescription,
+                    Subject = string.IsNullOrWhiteSpace(BugPrefix) ? BugTitle : $"[{BugPrefix}] {BugTitle}",
+                    Description = finalDescription,
                     Uploads = uploads,
                     CustomFields = new List<IssueCustomField>(),
                     AssignedTo = SelectedMembership?.User

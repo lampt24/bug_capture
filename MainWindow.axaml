@@ -276,9 +276,14 @@
             <Grid Grid.Row="0" Margin="12,10,12,15" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                 <!-- Title Row -->
                 <TextBlock Grid.Row="0" Grid.Column="0" Classes="card-label" Text="TIÊU ĐỀ" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
-                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding BugTitle}"
-                         Height="32" Margin="0,0,0,10" VerticalAlignment="Center"
-                         Watermark="Nhập tiêu đề bug tại đây..." />
+                <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="1*,5*" Margin="0,0,0,10">
+                    <TextBox Grid.Column="0" Text="{Binding BugPrefix}" 
+                             Height="32" Margin="0,0,10,0" VerticalAlignment="Center"
+                             Watermark="Prefix..." />
+                    <TextBox Grid.Column="1" Text="{Binding BugTitle}"
+                             Height="32" VerticalAlignment="Center"
+                             Watermark="Nhập tiêu đề bug tại đây..." />
+                </Grid>
 
                 <!-- Description Row -->
                 <TextBlock Grid.Row="1" Grid.Column="0" Classes="card-label" Text="MÔ TẢ BUG" Width="100" Margin="0,4,12,10" VerticalAlignment="Top" />

@@ -12,6 +12,7 @@ namespace BugCapture.Models
         public int? LastProjectId { get; set; }
         public int? LastTrackerId { get; set; }
         public int? LastAssigneeId { get; set; }
+        public string LastIssuePrefix { get; set; } = string.Empty;
         
         // Field values stored by TrackerId -> FieldId -> Value
         public System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<string, string>> TrackerCustomFields { get; set; } = new();
