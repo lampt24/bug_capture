@@ -12,6 +12,7 @@ using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Diagnostics;
 using ShareX.HelpersLib;
 using Redmine.Net.Api.Types;
 using Redmine.Net.Api;
@@ -68,6 +69,8 @@ namespace BugCapture
         private ObservableCollection<CustomFieldControlViewModel> _customFieldControls = new();
         private bool _isSubmitting = false;
         private bool _isTrackerSelectionEnabled = true;
+        private string _lastCreatedIssueUrl = string.Empty;
+        private string _lastCreatedIssueText = string.Empty;
 
         public ObservableCollection<CapturedImage> CapturedImages { get; } = new ObservableCollection<CapturedImage>();
         public MainViewModel EditorViewModel { get; } = new MainViewModel();
@@ -311,6 +314,69 @@ namespace BugCapture
         {
             get => _isSubmitting;
             set { _isSubmitting = value; OnPropertyChanged(nameof(IsSubmitting)); }
+        }
+
+        public string LastCreatedIssueUrl
+        {
+            get => _lastCreatedIssueUrl;
+            private set
+            {
+                _lastCreatedIssueUrl = value;
+                OnPropertyChanged(nameof(LastCreatedIssueUrl));
+                OnPropertyChanged(nameof(IsLastCreatedIssueVisible));
+            }
+        }
+
+        public string LastCreatedIssueText
+        {
+            get => _lastCreatedIssueText;
+            private set
+            {
+                _lastCreatedIssueText = value;
+                OnPropertyChanged(nameof(LastCreatedIssueText));
+            }
+        }
+
+        public bool IsLastCreatedIssueVisible => !string.IsNullOrWhiteSpace(LastCreatedIssueUrl);
+
+        private void SetLastCreatedIssue(int issueId)
+        {
+            if (issueId <= 0 || string.IsNullOrWhiteSpace(RedmineUrl))
+            {
+                ClearLastCreatedIssue();
+                return;
+            }
+
+            string baseUrl = RedmineUrl.TrimEnd('/');
+            LastCreatedIssueUrl = $"{baseUrl}/issues/{issueId}";
+            LastCreatedIssueText = $"Issue #{issueId}";
+        }
+
+        private void ClearLastCreatedIssue()
+        {
+            LastCreatedIssueUrl = string.Empty;
+            LastCreatedIssueText = string.Empty;
+        }
+
+        public void OnOpenLastIssueClick(object? sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(LastCreatedIssueUrl))
+            {
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = LastCreatedIssueUrl,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Cannot open issue link: {ex.Message}";
+            }
         }
 
         private void UpdateClock(object? state)
@@ -615,6 +681,7 @@ namespace BugCapture
                 return;
             }
 
+            ClearLastCreatedIssue();
             IsSubmitting = true;
             StatusText = "Uploading attachments...";
 
@@ -684,11 +751,12 @@ namespace BugCapture
                 }
 
                 StatusText = "Creating issue...";
-                var success = await _redmineService.CreateIssueAsync(issue);
+                var createdIssue = await _redmineService.CreateIssueAsync(issue);
 
-                if (success)
+                if (createdIssue != null)
                 {
                     StatusText = "Issue created successfully!";
+                    SetLastCreatedIssue(createdIssue.Id);
                     // Optional: Clear form
                     BugTitle = string.Empty;
                     BugDescription = string.Empty;
@@ -705,11 +773,13 @@ namespace BugCapture
                 }
                 else
                 {
+                    ClearLastCreatedIssue();
                     StatusText = "Failed to create Redmine issue.";
                 }
             }
             catch (Exception ex)
             {
+                ClearLastCreatedIssue();
                 StatusText = $"Error: {ex.Message}";
             }
             finally

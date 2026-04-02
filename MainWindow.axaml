@@ -509,10 +509,29 @@
 					BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
 					Padding="16,6">
 				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+
 					<TextBlock Text="{Binding StatusText}"
 							   FontSize="12"
 							   Foreground="#ffffff"
 							   VerticalAlignment="Center" />
+
+					<Button Grid.Column="1"
+							Background="Transparent"
+							BorderThickness="0"
+							Padding="0"
+							Click="OnOpenLastIssueClick"
+							IsVisible="{Binding IsLastCreatedIssueVisible}"
+							ToolTip.Tip="Mở issue Redmine vừa tạo">
+						<TextBlock Text="{Binding LastCreatedIssueText}"
+								   FontSize="12"
+								   Foreground="{DynamicResource AccentBrush}"
+								   TextDecorations="Underline"
+								   VerticalAlignment="Center" />
+					</Button>
 				</Grid>
 			</Border>
 

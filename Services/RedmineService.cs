@@ -725,9 +725,9 @@ namespace BugCapture.Services
             }
         }
 
-        public async Task<bool> CreateIssueAsync(Issue issue)
+        public async Task<Issue?> CreateIssueAsync(Issue issue)
         {
-            if (_manager == null) return false;
+            if (_manager == null) return null;
             try
             {
                 _logger.WriteLine($"Redmine: Creating issue '{issue.Subject}'...");
@@ -736,14 +736,14 @@ namespace BugCapture.Services
                 if (createdIssue != null)
                 {
                     _logger.WriteLine($"Redmine: Issue #{createdIssue.Id} created successfully.");
-                    return true;
+                    return createdIssue;
                 }
-                return false;
+                return null;
             }
             catch (Exception ex)
             {
                 _logger.WriteException(ex, "Redmine Error (CreateIssue)");
-                return false;
+                return null;
             }
         }
     }
