@@ -15,9 +15,11 @@ namespace BugCapture
         public SettingsWindow()
         {
             InitializeComponent();
-            
+
             var urlBox = this.FindControl<TextBox>("UrlTextBox");
             var keyBox = this.FindControl<TextBox>("ApiKeyTextBox");
+            var mattermostUrlBox = this.FindControl<TextBox>("MattermostUrlTextBox");
+            var mattermostTokenBox = this.FindControl<TextBox>("MattermostTokenTextBox");
 
             var saveBtn = this.FindControl<Button>("SaveButton");
             var cancelBtn = this.FindControl<Button>("CancelButton");
@@ -28,6 +30,8 @@ namespace BugCapture
             CurrentSettings = SettingsService.Load();
             if (urlBox != null) urlBox.Text = CurrentSettings.RedmineUrl;
             if (keyBox != null) keyBox.Text = CurrentSettings.RedmineApiKey;
+            if (mattermostUrlBox != null) mattermostUrlBox.Text = CurrentSettings.MattermostServerUrl;
+            if (mattermostTokenBox != null) mattermostTokenBox.Text = CurrentSettings.MattermostAccessToken;
         }
 
         private void InitializeComponent()
@@ -39,6 +43,8 @@ namespace BugCapture
         {
             var urlBox = this.FindControl<TextBox>("UrlTextBox");
             var keyBox = this.FindControl<TextBox>("ApiKeyTextBox");
+            var mattermostUrlBox = this.FindControl<TextBox>("MattermostUrlTextBox");
+            var mattermostTokenBox = this.FindControl<TextBox>("MattermostTokenTextBox");
 
             if (urlBox == null || keyBox == null || string.IsNullOrWhiteSpace(urlBox.Text) || string.IsNullOrWhiteSpace(keyBox.Text))
             {
@@ -47,6 +53,8 @@ namespace BugCapture
 
             CurrentSettings.RedmineUrl = urlBox.Text.Trim();
             CurrentSettings.RedmineApiKey = keyBox.Text.Trim();
+            CurrentSettings.MattermostServerUrl = mattermostUrlBox?.Text?.Trim() ?? string.Empty;
+            CurrentSettings.MattermostAccessToken = mattermostTokenBox?.Text?.Trim() ?? string.Empty;
             SettingsService.Save(CurrentSettings);
             IsSaved = true;
             Close();
