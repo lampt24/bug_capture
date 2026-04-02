@@ -8,9 +8,12 @@ namespace BugCapture.Models
     {
         private Bitmap? _thumbnail;
         private string _captureType = string.Empty;
+        private string _fileTypeIconData = string.Empty;
+        private string _fileExtensionDisplay = string.Empty;
 
         private bool _isSelected;
         public string FilePath { get; set; } = string.Empty;
+        public bool IsImage { get; set; } = true;
         
         public Bitmap? Thumbnail 
         { 
@@ -30,6 +33,18 @@ namespace BugCapture.Models
         { 
             get => _captureType; 
             set { _captureType = value; OnPropertyChanged(nameof(CaptureType)); } 
+        }
+
+        public string FileTypeIconData
+        {
+            get => _fileTypeIconData;
+            set { _fileTypeIconData = value; OnPropertyChanged(nameof(FileTypeIconData)); }
+        }
+
+        public string FileExtensionDisplay
+        {
+            get => _fileExtensionDisplay;
+            set { _fileExtensionDisplay = value; OnPropertyChanged(nameof(FileExtensionDisplay)); }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

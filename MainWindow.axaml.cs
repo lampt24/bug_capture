@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using ShareX.ImageEditor.Presentation.Views;
 using ShareX.ImageEditor.Presentation.ViewModels;
 using Avalonia.Input;
+using Avalonia.Platform.Storage;
 using System.Collections.Generic;
 using System.Net.Http;
 using ShareX.HelpersLib;
@@ -22,6 +23,14 @@ namespace BugCapture
         private readonly ShareXCaptureService _captureService;
         private const int ThumbnailWidthPixels = 100;
         private const int ThumbnailQualityPercent = 80;
+        private const string GenericFileIconPathData = "M14,2H6C4.9,2 4,2.9 4,4V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8L14,2M14,9V3.5L18.5,9H14Z";
+        private const string PdfFileIconPathData = "M6,2H14L20,8V20C20,21.1 19.1,22 18,22H6C4.9,22 4,21.1 4,20V4C4,2.9 4.9,2 6,2M8,12V18H10V16H12C13.1,16 14,15.1 14,14C14,12.9 13.1,12 12,12H8M10,14H12V14H10V14M15,12V18H17V12H15Z";
+        private const string WordFileIconPathData = "M6,2H14L20,8V20C20,21.1 19.1,22 18,22H6C4.9,22 4,21.1 4,20V4C4,2.9 4.9,2 6,2M8,12L9.2,18H10.8L12,14.5L13.2,18H14.8L16,12H14.5L13.9,16L12.7,12H11.3L10.1,16L9.5,12H8Z";
+        private const string ArchiveFileIconPathData = "M20.54,5.23L19.15,3.55C18.88,3.21 18.47,3 18,3H6C5.53,3 5.12,3.21 4.85,3.55L3.46,5.23C3.17,5.57 3,6 3,6.5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19V6.5C21,6 20.83,5.57 20.54,5.23M12,17L8,13H10.5V11H13.5V13H16L12,17M5.12,5L6,4H18L18.88,5H5.12Z";
+        private static readonly HashSet<string> ImageFileExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tif", ".tiff"
+        };
         private bool _isInitialized = false;
         private int _evidenceCounter = 1;
         private string _statusText = "Ready";
@@ -116,12 +125,18 @@ namespace BugCapture
             get => _isEditorVisible;
             set
             {
+                if (_isEditorVisible == value)
+                {
+                    return;
+                }
+
                 _isEditorVisible = value;
                 OnPropertyChanged(nameof(IsEditorVisible));
 
                 if (value)
                 {
                     // Restore expanded height
+                    SizeToContent = Avalonia.Controls.SizeToContent.Manual;
                     Height = _expandedHeight;
                 }
                 else
@@ -601,7 +616,7 @@ namespace BugCapture
             }
 
             IsSubmitting = true;
-            StatusText = "Uploading images...";
+            StatusText = "Uploading attachments...";
 
             try
             {
@@ -618,7 +633,17 @@ namespace BugCapture
                     finalDescription += "\n\n" + (System.Globalization.CultureInfo.CurrentCulture.Name.StartsWith("vi") ? "--- Bằng chứng (Evidence): ---" : "--- Evidence: ---") + "\n";
                     foreach (var upload in uploads)
                     {
-                        finalDescription += $"\n!{upload.FileName}!";
+                        var attachment = CapturedImages.FirstOrDefault(item =>
+                            string.Equals(System.IO.Path.GetFileName(item.FilePath), upload.FileName, StringComparison.OrdinalIgnoreCase));
+
+                        if (attachment != null && attachment.IsImage)
+                        {
+                            finalDescription += $"\n!{upload.FileName}!";
+                        }
+                        else
+                        {
+                            finalDescription += $"\nattachment:{upload.FileName}";
+                        }
                     }
                 }
 
@@ -726,7 +751,7 @@ namespace BugCapture
 
         private void UpdateThumbnailFromSnapshot(SkiaSharp.SKBitmap snapshot)
         {
-            if (_currentlyEditingImage == null)
+            if (_currentlyEditingImage == null || !_currentlyEditingImage.IsImage)
             {
                 return;
             }
@@ -992,6 +1017,60 @@ namespace BugCapture
             }
         }
 
+        public async void OnAddAttachmentClick(object sender, RoutedEventArgs e)
+        {
+            if (StorageProvider == null)
+            {
+                StatusText = "Attachment Error: Storage provider unavailable.";
+                return;
+            }
+
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                AllowMultiple = true,
+                Title = "Select attachments"
+            });
+
+            if (files == null || files.Count == 0)
+            {
+                return;
+            }
+
+            int addedCount = 0;
+            CapturedImage? firstAdded = null;
+
+            foreach (var file in files)
+            {
+                var localPath = file.TryGetLocalPath();
+                if (string.IsNullOrWhiteSpace(localPath))
+                {
+                    continue;
+                }
+
+                if (CapturedImages.Any(item => string.Equals(item.FilePath, localPath, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                var attachment = CreateAttachmentFromFile(localPath);
+                if (attachment == null)
+                {
+                    continue;
+                }
+
+                CapturedImages.Add(attachment);
+                addedCount++;
+                firstAdded ??= attachment;
+            }
+
+            if (firstAdded != null)
+            {
+                OnThumbnailClickInternal(firstAdded, forceShowEditor: false);
+            }
+
+            StatusText = addedCount > 0 ? $"Added {addedCount} attachment(s)." : "No new attachments added.";
+        }
+
         public void OnTopBarPointerPressed(object? sender, PointerPressedEventArgs e)
         {
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
@@ -1094,8 +1173,22 @@ namespace BugCapture
                 item.IsSelected = (item == image);
             }
 
-            // Show editor only if forced (manual click) or already visible
-            if (forceShowEditor)
+            if (!image.IsImage)
+            {
+                _currentlyEditingImage = null;
+                IsEditorVisible = false;
+                EditorViewModel.ClearCommand.Execute(null);
+                EditorViewModel.PreviewImage = null;
+                EditorViewModel.ImageFilePath = null;
+                EditorViewModel.ImageDimensions = "No image";
+                EditorViewModel.IsDirty = false;
+                StatusText = $"Selected attachment: {image.CaptureType}";
+                return;
+            }
+
+            // Show editor when explicitly requested, or when editor is currently hidden
+            // (e.g. it was hidden after selecting a non-image attachment).
+            if (forceShowEditor || !IsEditorVisible)
             {
                 IsEditorVisible = true;
             }
@@ -1135,6 +1228,67 @@ namespace BugCapture
                 StatusText = $"Error loading editor: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine($"Failed to load image in editor: {ex.Message}");
             }
+        }
+
+        private CapturedImage? CreateAttachmentFromFile(string filePath)
+        {
+            try
+            {
+                var extension = System.IO.Path.GetExtension(filePath)?.ToLowerInvariant() ?? string.Empty;
+                var fileName = System.IO.Path.GetFileName(filePath);
+                bool isImage = ImageFileExtensions.Contains(extension);
+
+                var item = new CapturedImage
+                {
+                    FilePath = filePath,
+                    CaptureType = fileName,
+                    CapturedAt = DateTime.Now,
+                    IsImage = isImage,
+                    FileTypeIconData = ResolveFileIconData(extension),
+                    FileExtensionDisplay = string.IsNullOrWhiteSpace(extension)
+                        ? "FILE"
+                        : extension.TrimStart('.').ToUpperInvariant()
+                };
+
+                if (isImage)
+                {
+                    using (var stream = System.IO.File.OpenRead(filePath))
+                    {
+                        item.Thumbnail = new Avalonia.Media.Imaging.Bitmap(stream);
+                    }
+                }
+
+                return item;
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteException(ex, $"Attachment parse error: {filePath}");
+                return null;
+            }
+        }
+
+        private static string ResolveFileIconData(string extension)
+        {
+            if (string.Equals(extension, ".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                return PdfFileIconPathData;
+            }
+
+            if (string.Equals(extension, ".doc", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(extension, ".docx", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(extension, ".rtf", StringComparison.OrdinalIgnoreCase))
+            {
+                return WordFileIconPathData;
+            }
+
+            if (string.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(extension, ".rar", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(extension, ".7z", StringComparison.OrdinalIgnoreCase))
+            {
+                return ArchiveFileIconPathData;
+            }
+
+            return GenericFileIconPathData;
         }
 
         protected override void OnClosed(EventArgs e)

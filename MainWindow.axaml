@@ -447,29 +447,43 @@
 							MinHeight="70"
 							Margin="0,0,0,8" Padding="8">
 						<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-							<ItemsControl ItemsSource="{Binding CapturedImages}">
-								<ItemsControl.ItemsPanel>
-									<ItemsPanelTemplate>
-										<StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" />
-									</ItemsPanelTemplate>
-								</ItemsControl.ItemsPanel>
-								<ItemsControl.ItemTemplate>
-									<DataTemplate x:DataType="models:CapturedImage">
-										<Button Padding="0" Margin="0" BorderThickness="0" Background="Transparent" Click="OnThumbnailClick" CommandParameter="{Binding}">
-											<Border Classes="thumb" Classes.selected="{Binding IsSelected}" Padding="3" Width="100" Height="60">
-												<Grid>
-													<Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
-													<Button Classes="close-btn" Click="OnDeleteImageClick" CommandParameter="{Binding}"
-															HorizontalAlignment="Right" VerticalAlignment="Top"
-															Width="18" Height="18" Padding="0">
-														<PathIcon Data="{StaticResource Icon.Close}" Width="8" Height="8" />
-													</Button>
-												</Grid>
-											</Border>
-										</Button>
-									</DataTemplate>
-								</ItemsControl.ItemTemplate>
-							</ItemsControl>
+							<StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+								<Button Classes="dash-btn" Width="100" Height="60" Click="OnAddAttachmentClick"
+										ToolTip.Tip="Add file attachment">
+									<StackPanel Orientation="Vertical" Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+										<PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="18" Height="18" />
+										<TextBlock Text="Add" FontSize="11" HorizontalAlignment="Center" />
+									</StackPanel>
+								</Button>
+
+								<ItemsControl ItemsSource="{Binding CapturedImages}">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate>
+											<StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" />
+										</ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="models:CapturedImage">
+											<Button Padding="0" Margin="0" BorderThickness="0" Background="Transparent" Click="OnThumbnailClick" CommandParameter="{Binding}">
+												<Border Classes="thumb" Classes.selected="{Binding IsSelected}" Padding="3" Width="100" Height="60">
+													<Grid>
+														<Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding IsImage}" />
+														<StackPanel IsVisible="{Binding !IsImage}" Spacing="2" HorizontalAlignment="Center" VerticalAlignment="Center">
+															<PathIcon Data="{Binding FileTypeIconData}" Width="20" Height="20" />
+															<TextBlock Text="{Binding FileExtensionDisplay}" FontSize="9" HorizontalAlignment="Center" />
+														</StackPanel>
+														<Button Classes="close-btn" Click="OnDeleteImageClick" CommandParameter="{Binding}"
+																HorizontalAlignment="Right" VerticalAlignment="Top"
+																Width="18" Height="18" Padding="0">
+															<PathIcon Data="{StaticResource Icon.Close}" Width="8" Height="8" />
+														</Button>
+													</Grid>
+												</Border>
+											</Button>
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+							</StackPanel>
 						</ScrollViewer>
 					</Border>
 
