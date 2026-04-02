@@ -83,14 +83,15 @@
 			<Setter Property="FontSize"         Value="12" />
 			<Setter Property="FontWeight"       Value="Medium" />
 			<Setter Property="Foreground"       Value="{DynamicResource TextBrush}" />
+			<Setter Property="Cursor"           Value="Hand" />
 		</Style>
 		<Style Selector="Button.dash-btn:pointerover /template/ ContentPresenter">
-			<Setter Property="Background" Value="Transparent" />
-			<Setter Property="Foreground" Value="#FFFFFF" />
+			<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+			<Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
 		</Style>
 		<Style Selector="Button.dash-btn:pressed /template/ ContentPresenter">
-			<Setter Property="Background" Value="Transparent" />
-			<Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+			<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+			<Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
 		</Style>
 
 		<!-- ── Window control buttons (minimize / close) ── -->
@@ -104,50 +105,52 @@
 			<Setter Property="VerticalContentAlignment" Value="Center" />
 			<Setter Property="HorizontalContentAlignment" Value="Center" />
 			<Setter Property="Foreground"       Value="{DynamicResource MutedBrush}" />
+			<Setter Property="Cursor"           Value="Hand" />
 		</Style>
 		<Style Selector="Button.wnd-btn:pointerover /template/ ContentPresenter">
-			<Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+			<Setter Property="Background" Value="Transparent" />
 		</Style>
 		<Style Selector="Button.wnd-btn.close-btn:pointerover /template/ ContentPresenter">
-			<Setter Property="Background" Value="#8B1A1A" />
+			<Setter Property="Background" Value="Transparent" />
 		</Style>
 		<Style Selector="Button.wnd-btn:pressed /template/ ContentPresenter">
-			<Setter Property="Background" Value="#0D2040" />
+			<Setter Property="Background" Value="Transparent" />
 		</Style>
 
 		<!-- ── Toggle button dark ── -->
 		<Style Selector="ToggleButton.dash-toggle">
-			<Setter Property="Background"       Value="#112550" />
-			<Setter Property="BorderBrush"      Value="#1E3A6E" />
+			<Setter Property="Background"       Value="{DynamicResource SurfaceBrush}" />
+			<Setter Property="BorderBrush"      Value="{DynamicResource BorderBrush}" />
 			<Setter Property="BorderThickness"  Value="1" />
 			<Setter Property="CornerRadius"     Value="0" />
 			<Setter Property="Padding"          Value="14,7" />
 			<Setter Property="FontSize"         Value="12" />
 			<Setter Property="FontWeight"       Value="Medium" />
-			<Setter Property="Foreground"       Value="#5A7AAB" />
+			<Setter Property="Foreground"       Value="{DynamicResource TextBrush}" />
+			<Setter Property="Cursor"           Value="Hand" />
 		</Style>
 		<Style Selector="ToggleButton.dash-toggle:checked /template/ ContentPresenter">
-			<Setter Property="Background" Value="#0D2D4A" />
+			<Setter Property="Background" Value="{DynamicResource AccentBrush}" />
 		</Style>
 		<Style Selector="ToggleButton.dash-toggle:checked">
-			<Setter Property="Foreground"  Value="#4FD1C5" />
-			<Setter Property="BorderBrush" Value="#4FD1C5" />
+			<Setter Property="Foreground"  Value="Black" />
+			<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
 		</Style>
 		<Style Selector="ToggleButton.dash-toggle:pointerover /template/ ContentPresenter">
-			<Setter Property="Background" Value="#1A3560" />
+			<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
 		</Style>
 
 		<!-- ── Thumbnail border (dark) ── -->
 		<Style Selector="Border.thumb">
-			<Setter Property="BorderBrush"     Value="#1A3060" />
+			<Setter Property="BorderBrush"     Value="{DynamicResource BorderBrush}" />
 			<Setter Property="BorderThickness" Value="1" />
-			<Setter Property="Background"      Value="#0A1A38" />
+			<Setter Property="Background"      Value="{DynamicResource SurfaceBrush}" />
 			<Setter Property="CornerRadius"    Value="0" />
 		</Style>
 		<Style Selector="Border.thumb.selected">
-			<Setter Property="BorderBrush"     Value="#4FD1C5" />
+			<Setter Property="BorderBrush"     Value="{DynamicResource AccentBrush}" />
 			<Setter Property="BorderThickness" Value="2" />
-			<Setter Property="Background"      Value="#0D2D3A" />
+			<Setter Property="Background"      Value="{DynamicResource HoverBrush}" />
 		</Style>
 
 		<!-- ── Pulse dot animation ── -->
