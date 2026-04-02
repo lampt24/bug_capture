@@ -6,6 +6,7 @@ using BugCapture.Models;
 using BugCapture.Services;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using Avalonia;
 using ShareX.ImageEditor.Presentation.Views;
 using ShareX.ImageEditor.Presentation.ViewModels;
 using Avalonia.Input;
@@ -71,6 +72,10 @@ namespace BugCapture
         private bool _isTrackerSelectionEnabled = true;
         private string _lastCreatedIssueUrl = string.Empty;
         private string _lastCreatedIssueText = string.Empty;
+        private Point? _thumbnailDragStartPoint;
+        private CapturedImage? _thumbnailDragSource;
+        private bool _isThumbnailDragInProgress;
+        private const string ThumbnailDragDataPrefix = "BUGCAPTURE_THUMBNAIL:";
 
         public ObservableCollection<CapturedImage> CapturedImages { get; } = new ObservableCollection<CapturedImage>();
         public MainViewModel EditorViewModel { get; } = new MainViewModel();
@@ -1184,6 +1189,11 @@ namespace BugCapture
             }
         }
 
+        public void OnToggleEditorVisibleClick(object sender, RoutedEventArgs e)
+        {
+            IsEditorVisible = !IsEditorVisible;
+        }
+
         public void OnDeleteImageClick(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.DataContext is CapturedImage image)
@@ -1210,6 +1220,215 @@ namespace BugCapture
             }
         }
 
+        public void OnThumbnailPointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            if (!ReferenceEquals(e.Source, sender))
+            {
+                return;
+            }
+
+            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                return;
+            }
+
+            if (sender is Button btn && btn.DataContext is CapturedImage image)
+            {
+                _thumbnailDragSource = image;
+                _thumbnailDragStartPoint = e.GetPosition(btn);
+            }
+        }
+
+        public async void OnThumbnailPointerMoved(object? sender, PointerEventArgs e)
+        {
+            if (_isThumbnailDragInProgress || _thumbnailDragSource == null || _thumbnailDragStartPoint == null)
+            {
+                return;
+            }
+
+            if (sender is not Button btn)
+            {
+                return;
+            }
+
+            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                return;
+            }
+
+            var currentPoint = e.GetPosition(btn);
+            var startPoint = _thumbnailDragStartPoint.Value;
+            if (Math.Abs(currentPoint.X - startPoint.X) < 4 && Math.Abs(currentPoint.Y - startPoint.Y) < 4)
+            {
+                return;
+            }
+
+            var sourceIndex = CapturedImages.IndexOf(_thumbnailDragSource);
+            if (sourceIndex < 0)
+            {
+                ResetThumbnailDragState();
+                return;
+            }
+
+            _isThumbnailDragInProgress = true;
+            var dragData = new DataObject();
+            dragData.Set(DataFormats.Text, $"{ThumbnailDragDataPrefix}{sourceIndex}");
+
+            try
+            {
+                await DragDrop.DoDragDrop(e, dragData, DragDropEffects.Move);
+            }
+            finally
+            {
+                ResetThumbnailDragState();
+            }
+        }
+
+        public void OnThumbnailDragOver(object? sender, DragEventArgs e)
+        {
+            var hasInternalDrag = TryGetDraggedThumbnailIndex(e.Data, out _);
+            var hasExternalFiles = e.Data.Contains(DataFormats.Files);
+
+            e.DragEffects = (hasInternalDrag || hasExternalFiles)
+                ? DragDropEffects.Move
+                : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        public async void OnThumbnailDrop(object? sender, DragEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is CapturedImage targetImage && TryGetDraggedThumbnailIndex(e.Data, out var sourceIndex))
+            {
+                var targetIndex = CapturedImages.IndexOf(targetImage);
+                MoveThumbnail(sourceIndex, targetIndex);
+                e.Handled = true;
+                return;
+            }
+
+            await HandleExternalDropAsync(e);
+        }
+
+        public void OnGalleryDragOver(object? sender, DragEventArgs e)
+        {
+            var hasInternalDrag = TryGetDraggedThumbnailIndex(e.Data, out _);
+            var hasExternalFiles = e.Data.Contains(DataFormats.Files);
+
+            e.DragEffects = (hasInternalDrag || hasExternalFiles)
+                ? DragDropEffects.Move
+                : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        public async void OnGalleryDrop(object? sender, DragEventArgs e)
+        {
+            if (TryGetDraggedThumbnailIndex(e.Data, out var sourceIndex))
+            {
+                MoveThumbnail(sourceIndex, CapturedImages.Count - 1);
+                e.Handled = true;
+                return;
+            }
+
+            await HandleExternalDropAsync(e);
+        }
+
+        private Task HandleExternalDropAsync(DragEventArgs e)
+        {
+            if (!e.Data.Contains(DataFormats.Files))
+            {
+                e.DragEffects = DragDropEffects.None;
+                e.Handled = true;
+                return Task.CompletedTask;
+            }
+
+            var droppedItems = e.Data.GetFiles();
+            if (droppedItems == null)
+            {
+                e.Handled = true;
+                return Task.CompletedTask;
+            }
+
+            int addedCount = 0;
+            CapturedImage? firstAdded = null;
+
+            foreach (var item in droppedItems)
+            {
+                if (item is not IStorageFile file)
+                {
+                    continue;
+                }
+
+                var localPath = file.TryGetLocalPath();
+                if (string.IsNullOrWhiteSpace(localPath))
+                {
+                    continue;
+                }
+
+                if (CapturedImages.Any(existing => string.Equals(existing.FilePath, localPath, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                var attachment = CreateAttachmentFromFile(localPath);
+                if (attachment == null)
+                {
+                    continue;
+                }
+
+                CapturedImages.Add(attachment);
+                addedCount++;
+                firstAdded ??= attachment;
+            }
+
+            if (firstAdded != null)
+            {
+                OnThumbnailClickInternal(firstAdded, forceShowEditor: false);
+            }
+
+            StatusText = addedCount > 0
+                ? $"Added {addedCount} attachment(s) via drag & drop."
+                : "No new attachments added from drag & drop.";
+
+            e.DragEffects = addedCount > 0 ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+            return Task.CompletedTask;
+        }
+
+        private bool TryGetDraggedThumbnailIndex(IDataObject data, out int sourceIndex)
+        {
+            sourceIndex = -1;
+
+            var text = data.GetText();
+            if (string.IsNullOrWhiteSpace(text) || !text.StartsWith(ThumbnailDragDataPrefix, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return int.TryParse(text.Substring(ThumbnailDragDataPrefix.Length), out sourceIndex);
+        }
+
+        private void MoveThumbnail(int sourceIndex, int targetIndex)
+        {
+            if (sourceIndex < 0 || sourceIndex >= CapturedImages.Count || targetIndex < 0 || targetIndex >= CapturedImages.Count)
+            {
+                return;
+            }
+
+            if (sourceIndex == targetIndex)
+            {
+                return;
+            }
+
+            CapturedImages.Move(sourceIndex, targetIndex);
+            StatusText = "Thumbnail order updated.";
+        }
+
+        private void ResetThumbnailDragState()
+        {
+            _thumbnailDragStartPoint = null;
+            _thumbnailDragSource = null;
+            _isThumbnailDragInProgress = false;
+        }
+
         public void OnEditorPointerPressed(object? sender, PointerPressedEventArgs e)
         {
             if (sender is EditorView view)
@@ -1221,6 +1440,12 @@ namespace BugCapture
         private void OnThumbnailClickInternal(CapturedImage image, bool forceShowEditor = true)
         {
             if (image == null) return;
+
+            // Re-clicking the same opened image should be a no-op.
+            if (ReferenceEquals(_currentlyEditingImage, image) && image.IsImage)
+            {
+                return;
+            }
 
             // Safety check: only warn if we are actually editing an image and there are changes
             if (_currentlyEditingImage != null && EditorViewModel.IsDirty)

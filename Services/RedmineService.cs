@@ -710,9 +710,9 @@ namespace BugCapture.Services
             try
             {
                 _logger.WriteLine($"Redmine: Fetching members via GetProjectMembershipsAsync for '{projectIdentifier}'...");
-                
+
                 var pagedResults = await _manager.GetProjectMembershipsAsync(projectIdentifier);
-                
+
                 var memberships = pagedResults?.Items?.ToList() ?? new List<ProjectMembership>();
 
                 _logger.WriteLine($"Redmine: Found {memberships.Count} members.");
