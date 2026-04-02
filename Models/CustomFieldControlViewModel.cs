@@ -61,7 +61,7 @@ namespace BugCapture.Models
             set => Value = value ? "1" : "0";
         }
 
-        public bool IsList => Field.FieldFormat == "list";
+        public bool IsList => Field.FieldFormat == "list" || Field.FieldFormat == "enumeration";
         public bool IsText => Field.FieldFormat == "string" || Field.FieldFormat == "text" || Field.FieldFormat == "link";
         public bool IsNumber => Field.FieldFormat == "int" || Field.FieldFormat == "float";
         public bool IsDate => Field.FieldFormat == "date";
@@ -70,11 +70,11 @@ namespace BugCapture.Models
         public CustomFieldControlViewModel(CustomField field)
         {
             Field = field;
-            if (field.FieldFormat == "list" && field.PossibleValues != null && field.PossibleValues.Count > 0)
+            if ((field.FieldFormat == "list" || field.FieldFormat == "enumeration") && field.PossibleValues != null && field.PossibleValues.Count > 0)
             {
                 var def = field.DefaultValue;
                 var match = field.PossibleValues.FirstOrDefault(p => p.Value == def);
-                Value = match ?? field.PossibleValues[0];
+                Value = (match ?? field.PossibleValues[0]).Value;
             }
             else if (!string.IsNullOrEmpty(field.DefaultValue))
             {

@@ -153,11 +153,6 @@
                                     ToolTip.Tip="Cut Out (U)"
                                     FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="12" Content="{x:Static theming:EditorIcons.ToolCutOut}"/>
                             <Button Classes="editor-button toolbar-button" Width="26"
-                                     Classes.active="{Binding $parent[views:EditorView].DataContext.IsEditorMaximized}"
-                                     Command="{Binding $parent[views:EditorView].DataContext.ToggleEditorMaximizedCommand}"
-                                     ToolTip.Tip="Toggle Fullscreen"
-                                     FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="12" Content="{x:Static theming:EditorIcons.ActionExpand}"/>
-                            <Button Classes="editor-button toolbar-button" Width="26"
                                     Classes.active="{Binding IsSettingsPanelOpen}"
                                     Command="{Binding ToggleSettingsPanelCommand}"
                                     ToolTip.Tip="Background"
@@ -525,6 +520,12 @@
                 BorderBrush="{DynamicResource ShareX.Brush.Border}" BorderThickness="0,1,0,0"
                 Padding="8,4" ClipToBounds="False">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+
+                <Button Classes="editor-button toolbar-button" Width="40" Height="32"
+                         Classes.active="{Binding $parent[views:EditorView].DataContext.IsEditorMaximized}"
+                         Command="{Binding $parent[views:EditorView].DataContext.ToggleEditorMaximizedCommand}"
+                         ToolTip.Tip="Toggle Fullscreen"
+                         FontFamily="{DynamicResource ShareX.FontFamily.Icon}" FontWeight="Normal" FontSize="12" Content="{x:Static theming:EditorIcons.ActionExpand}"/>
                 <!-- Zoom Picker -->
                 <controls:ZoomPickerDropdown
                     SelectedZoom="{Binding Zoom}"
@@ -563,6 +564,7 @@
                         ToolTip.Tip="Save (Ctrl+S)">
                     <TextBlock Text="{x:Static theming:EditorIcons.ActionSave}" FontSize="12" FontFamily="{DynamicResource ShareX.FontFamily.Icon}"/>
                 </Button>
+                
             </StackPanel>
         </Border>
 

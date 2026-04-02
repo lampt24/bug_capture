@@ -409,7 +409,7 @@ namespace BugCapture
                 Trackers = new ObservableCollection<ProjectTracker>(trackers);
 
                 var members = await _redmineService.GetMembershipsAsync(SelectedProject.Identifier, SelectedProject.Id);
-                Memberships = new ObservableCollection<ProjectMembership>(members);
+                Memberships = new ObservableCollection<ProjectMembership>(members.Where(m => m.User != null));
 
                 // Restore Selections
                 var settings = SettingsService.Load();
@@ -432,9 +432,10 @@ namespace BugCapture
             CustomFieldControls.Clear(); // Always clear first
 
             if (SelectedTracker == null) return;
+            if (SelectedProject == null) return;
 
             StatusText = $"Loading custom fields for {SelectedTracker.Name}...";
-            var allFields = await _redmineService.GetCustomFieldsAsync();
+            var allFields = await _redmineService.GetCustomFieldsForTrackerAsync(SelectedProject.Identifier, SelectedTracker.Id);
             var settings = SettingsService.Load();
             var trackerIdStr = SelectedTracker.Id.ToString();
 
@@ -442,6 +443,8 @@ namespace BugCapture
             {
                 bool trackerMatch = field.Trackers == null || field.Trackers.Count == 0 ||
                                    field.Trackers.Any(t => t.Id == SelectedTracker.Id);
+
+                _logger?.WriteLine($"[CustomField] Id={field.Id}, Name={field.Name}, Format={field.FieldFormat}, Options={field.PossibleValues?.Count ?? 0}, TrackerMatch={trackerMatch}");
 
                 if (trackerMatch)
                 {

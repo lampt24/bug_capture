@@ -1,0 +1,213 @@
+<div id="attributes" class="attributes">
+  
+
+<div class="splitcontent">
+<div class="splitcontentleft">
+<p>
+  <label for="issue_status_id">Status<span class="required"> *</span></label><select onchange="updateIssueFrom('/issues/126378/edit.js', this)" name="issue[status_id]" id="issue_status_id"><option value="4">Feedback</option>
+<option selected="selected" value="3">Resolved</option></select>
+</p>
+
+
+<p><label for="issue_priority_id">Priority<span class="required"> *</span></label><select name="issue[priority_id]" id="issue_priority_id"><option value="1">Low</option>
+<option selected="selected" value="2">Normal</option>
+<option value="3">High</option>
+<option value="4">Urgent</option>
+<option value="5">Immediate</option></select></p>
+
+<p>
+  <label for="issue_assigned_to_id">Assignee</label><select name="issue[assigned_to_id]" id="issue_assigned_to_id"><option value="">&nbsp;</option>
+<option value="50">&lt;&lt; me &gt;&gt;</option><option value="109">dieu-nk</option><option value="143">hieu-nh</option><option value="105">huy-ng</option><option value="50">lam-pt</option><option value="305" selected="selected">nghia-tt2</option><option value="2055">phuoc-nguyent</option><option value="87">phuong-tt</option><option value="36">quan-dt</option><option value="323">quang-nt2</option><option value="16">tam-bm</option><option value="110">tham-ntk</option><option value="88">thanh-nguyent</option><option value="705">truong-nvn</option><option value="133">van-nt</option><option value="99">vuong-lv</option></select>
+    <a class="assign-to-me-link" href="#" data-id="50">Assign to me</a>
+</p>
+
+
+</div>
+
+<div class="splitcontentright">
+<p id="parent_issue"><label for="issue_parent_issue_id">Parent task</label><input size="10" onchange="updateIssueFrom('/issues/126378/edit.js', this)" type="text" name="issue[parent_issue_id]" id="issue_parent_issue_id" class="ui-autocomplete-input autocomplete" autocomplete="off"></p>
+<script>
+//<![CDATA[
+observeAutocompleteField('issue_parent_issue_id', '/issues/auto_complete?issue_id=126378&project_id=dsi_btms_2026&scope=tree&status=o')
+//]]>
+</script>
+
+
+<p id="due_date_area">
+  <label for="issue_due_date">Due date</label><input size="10" value="2026-03-26" type="date" name="issue[due_date]" id="issue_due_date" class="date">
+  <script>
+//<![CDATA[
+$(function() { $('#issue_due_date').addClass('date').datepickerFallback(datepickerOptions); });
+//]]>
+</script>
+<span for="issue_due_date" class="error_due_date" hidden="">The selected day is nonworking day</span></p>
+
+
+<p><label for="issue_done_ratio">% Done</label><select name="issue[done_ratio]" id="issue_done_ratio"><option value="0">0 %</option>
+<option value="10">10 %</option>
+<option value="20">20 %</option>
+<option value="30">30 %</option>
+<option value="40">40 %</option>
+<option value="50">50 %</option>
+<option value="60">60 %</option>
+<option value="70">70 %</option>
+<option value="80">80 %</option>
+<option value="90">90 %</option>
+<option selected="selected" value="100">100 %</option></select></p>
+</div>
+</div>
+
+
+<div class="splitcontent">
+<div class="splitcontentleft">
+  <p><label for="issue_custom_field_values_18"><span title="Chọn nhanh phân loại bug" class="field-description">Bug Category</span></label><select name="issue[custom_field_values][18]" id="issue_custom_field_values_18" class="enumeration_cf cf_18" placeholder="Chọn nhanh phân loại bug"><option value="">&nbsp;</option><option value="20">Bug Khách hàng trả về - Review Code</option>
+<option value="21">Bug Khách hàng trả về - Review Thiết kế</option>
+<option value="22">Bug Khách hàng trả về - Testing</option>
+<option value="23">Bug Nội bộ - Review Code</option>
+<option value="24">Bug Nội bộ - Review Test case</option>
+<option value="25">Bug Nội bộ - Review thiết kế</option>
+<option value="46">Bug Nội bộ - Review khi Test giao hàng</option>
+<option value="26">Bug Nội bộ - Test giao hàng</option>
+<option value="27">Bug Nội bộ - Unit Testing (UT)</option>
+<option value="28">Bug Nội bộ - Combination Testing (CT)</option>
+<option value="30">Bug của khách hàng</option></select></p>
+  <p><label for="issue_custom_field_values_14"><span>Phase find bug</span> <span class="required">*</span></label><select name="issue[custom_field_values][14]" id="issue_custom_field_values_14" class="enumeration_cf cf_14" placeholder=""><option value="">--- Please select ---</option><option value="6">04R - Review Basic Design</option>
+<option value="8">05R - Review Detail Design</option>
+<option value="10">06R - Review Source Code</option>
+<option selected="selected" value="11">07 - Unit Testing (UT)</option>
+<option value="12">07R - Review Test Items (UT)</option>
+<option value="13">08 - Combination Testing (CT)</option>
+<option value="14">08R - Review Test Items (CT)</option>
+<option value="15">09 - System Testing (ST)</option>
+<option value="16">09R - Review Test Items (ST)</option>
+<option value="17">10 - Testing Before Delivery</option>
+<option value="29">11 - Testing of Customer</option></select></p>
+  <p><label for="issue_custom_field_values_2"><span title="Program, Module..." class="field-description">Module</span> <span class="required">*</span></label><input type="text" name="issue[custom_field_values][2]" id="issue_custom_field_values_2" value="9621" class="string_cf cf_2" placeholder="Program, Module..."></p>
+  <p><label for="issue_custom_field_values_12"><span title="Type of bug (review or testing)" class="field-description">Bug Type</span> <span class="required">*</span></label><select name="issue[custom_field_values][12]" id="issue_custom_field_values_12" class="enumeration_cf cf_12" placeholder="Type of bug (review or testing)"><option value="">--- Please select ---</option><option value="1">10 - Review</option>
+<option selected="selected" value="2">20 - Testing</option></select></p>
+</div><div class="splitcontentright">
+  <p><label for="issue_custom_field_values_13"><span title="Who found this bug?" class="field-description">Detected by</span> <span class="required">*</span></label><select name="issue[custom_field_values][13]" id="issue_custom_field_values_13" class="enumeration_cf cf_13" placeholder="Who found this bug?"><option value="">--- Please select ---</option><option selected="selected" value="3">10 - FJS Members</option>
+<option value="4">20 - Customer/Partner</option></select></p>
+  <p><label for="issue_custom_field_values_9"><span>Bug Weight</span> <span class="required">*</span></label><select name="issue[custom_field_values][9]" id="issue_custom_field_values_9" class="list_cf cf_9" placeholder=""><option value="0">0</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+<option value="6">6</option>
+<option value="7">7</option>
+<option value="8">8</option>
+<option value="9">9</option>
+<option selected="selected" value="10">10</option>
+<option value="11">11</option>
+<option value="12">12</option>
+<option value="13">13</option>
+<option value="14">14</option>
+<option value="15">15</option>
+<option value="16">16</option>
+<option value="17">17</option>
+<option value="18">18</option>
+<option value="19">19</option>
+<option value="20">20</option>
+<option value="21">21</option>
+<option value="22">22</option>
+<option value="23">23</option>
+<option value="24">24</option>
+<option value="25">25</option>
+<option value="26">26</option>
+<option value="27">27</option>
+<option value="28">28</option>
+<option value="29">29</option>
+<option value="30">30</option>
+<option value="31">31</option>
+<option value="32">32</option>
+<option value="33">33</option>
+<option value="34">34</option>
+<option value="35">35</option>
+<option value="36">36</option>
+<option value="37">37</option>
+<option value="38">38</option>
+<option value="39">39</option>
+<option value="40">40</option>
+<option value="41">41</option>
+<option value="42">42</option>
+<option value="43">43</option>
+<option value="44">44</option>
+<option value="45">45</option>
+<option value="46">46</option>
+<option value="47">47</option>
+<option value="48">48</option>
+<option value="49">49</option>
+<option value="50">50</option>
+<option value="51">51</option>
+<option value="52">52</option>
+<option value="53">53</option>
+<option value="54">54</option>
+<option value="55">55</option>
+<option value="56">56</option>
+<option value="57">57</option>
+<option value="58">58</option>
+<option value="59">59</option>
+<option value="60">60</option>
+<option value="61">61</option>
+<option value="62">62</option>
+<option value="63">63</option>
+<option value="64">64</option>
+<option value="65">65</option>
+<option value="66">66</option>
+<option value="67">67</option>
+<option value="68">68</option>
+<option value="69">69</option>
+<option value="70">70</option>
+<option value="71">71</option>
+<option value="72">72</option>
+<option value="73">73</option>
+<option value="74">74</option>
+<option value="75">75</option>
+<option value="76">76</option>
+<option value="77">77</option>
+<option value="78">78</option>
+<option value="79">79</option>
+<option value="80">80</option>
+<option value="81">81</option>
+<option value="82">82</option>
+<option value="83">83</option>
+<option value="84">84</option>
+<option value="85">85</option>
+<option value="86">86</option>
+<option value="87">87</option>
+<option value="88">88</option>
+<option value="89">89</option>
+<option value="90">90</option>
+<option value="91">91</option>
+<option value="92">92</option>
+<option value="93">93</option>
+<option value="94">94</option>
+<option value="95">95</option>
+<option value="96">96</option>
+<option value="97">97</option>
+<option value="98">98</option>
+<option value="99">99</option></select></p>
+  <p><label for="issue_custom_field_values_19"><span>Source</span> <span class="required">*</span></label><select name="issue[custom_field_values][19]" id="issue_custom_field_values_19" class="enumeration_cf cf_19" placeholder=""><option value="">&nbsp;</option><option selected="selected" value="31">10 - FJS Miss</option>
+<option value="32">20 - Customer Miss</option></select></p>
+  <p><label for="issue_custom_field_values_27"><span title="Chọn option này là true nếu sau khi đánh giá thì issue này không phải là bug" class="field-description">This issue is not a Bug</span></label><span class="bool_cf cf_27" placeholder="Chọn option này là true nếu sau khi đánh giá thì issue này không phải là bug"><input type="hidden" name="issue[custom_field_values][27]" value="0" autocomplete="off"><input type="checkbox" name="issue[custom_field_values][27]" id="issue_custom_field_values_27" value="1"></span></p>
+</div>
+</div>
+
+  <p><label for="issue_custom_field_values_10"><span title="Explain why bug occurred" class="field-description">Reason</span> <span class="required">*</span></label><div class="jstBlock"><div class="jstTabs tabs"><ul><li><a href="#" class="tab-edit selected">Edit</a></li><li><a href="#" class="tab-preview" data-url="/issues/preview?issue_id=126378&amp;project_id=dsi_btms_2026">Preview</a></li><li class="tab-elements"><div class="jstElements"><button type="button" tabindex="200" class="jstb_strong" title="Strong (Ctrl+B)"><span>Strong (Ctrl+B)</span></button><button type="button" tabindex="200" class="jstb_em" title="Italic (Ctrl+I)"><span>Italic (Ctrl+I)</span></button><button type="button" tabindex="200" class="jstb_ins" title="Underline (Ctrl+U)"><span>Underline (Ctrl+U)</span></button><button type="button" tabindex="200" class="jstb_del" title="Deleted"><span>Deleted</span></button><button type="button" tabindex="200" class="jstb_code" title="Inline Code"><span>Inline Code</span></button><span id="space1" class="jstSpacer">&nbsp;</span><button type="button" tabindex="200" class="jstb_h1" title="Heading 1"><span>Heading 1</span></button><button type="button" tabindex="200" class="jstb_h2" title="Heading 2"><span>Heading 2</span></button><button type="button" tabindex="200" class="jstb_h3" title="Heading 3"><span>Heading 3</span></button><span id="space2" class="jstSpacer">&nbsp;</span><button type="button" tabindex="200" class="jstb_ul" title="Unordered list"><span>Unordered list</span></button><button type="button" tabindex="200" class="jstb_ol" title="Ordered list"><span>Ordered list</span></button><span id="space3" class="jstSpacer">&nbsp;</span><button type="button" tabindex="200" class="jstb_bq" title="Quote"><span>Quote</span></button><button type="button" tabindex="200" class="jstb_unbq" title="Remove Quote"><span>Remove Quote</span></button><button type="button" tabindex="200" class="jstb_table" title="Table"><span>Table</span></button><button type="button" tabindex="200" class="jstb_pre" title="Preformatted text"><span>Preformatted text</span></button><button type="button" tabindex="200" class="jstb_precode" title="Highlighted code"><span>Highlighted code</span></button><span id="space4" class="jstSpacer">&nbsp;</span><button type="button" tabindex="200" class="jstb_link" title="Link to a Wiki page"><span>Link to a Wiki page</span></button><button type="button" tabindex="200" class="jstb_img" title="Image"><span>Image</span></button><span id="space5" class="jstSpacer">&nbsp;</span><button type="button" tabindex="200" class="jstb_help" title="Help"><span>Help</span></button><button type="button" tabindex="200" class="jstb_macros" title="Macro"><span>Macro</span></button></div></li></ul></div><div class="jstEditor"><textarea name="issue[custom_field_values][10]" id="issue_custom_field_values_10" class="text_cf cf_10 wiki-edit" placeholder="Explain why bug occurred" data-auto-complete="true" rows="8">Do sai sót trong quá trình coding</textarea><div class="wiki wiki-preview hidden" id="preview_issue_custom_field_values_10"></div></div></div></p>
+  <script>
+//<![CDATA[
+var wikiToolbar = new jsToolBar(document.getElementById('issue_custom_field_values_10')); wikiToolbar.setHelpLink('/help/en/wiki_syntax_textile.html'); wikiToolbar.setPreviewUrl('/issues/preview?issue_id=126378&project_id=dsi_btms_2026'); wikiToolbar.draw();
+//]]>
+</script>
+  <p><label for="issue_custom_field_values_11"><span title="How to fix bug" class="field-description">Fix Method</span> <span class="required">*</span></label><div class="jstBlock"><div class="jstTabs tabs"><ul><li><a href="#" class="tab-edit selected">Edit</a></li><li><a href="#" class="tab-preview" data-url="/issues/preview?issue_id=126378&amp;project_id=dsi_btms_2026">Preview</a></li><li class="tab-elements"><div class="jstElements"><button type="button" tabindex="200" class="jstb_strong" title="Strong (Ctrl+B)"><span>Strong (Ctrl+B)</span></button><button type="button" tabindex="200" class="jstb_em" title="Italic (Ctrl+I)"><span>Italic (Ctrl+I)</span></button><button type="button" tabindex="200" class="jstb_ins" title="Underline (Ctrl+U)"><span>Underline (Ctrl+U)</span></button><button type="button" tabindex="200" class="jstb_del" title="Deleted"><span>Deleted</span></button><button type="button" tabindex="200" class="jstb_code" title="Inline Code"><span>Inline Code</span></button><span id="space1" class="jstSpacer">&nbsp;</span><button type="button" tabindex="200" class="jstb_h1" title="Heading 1"><span>Heading 1</span></button><button type="button" tabindex="200" class="jstb_h2" title="Heading 2"><span>Heading 2</span></button><button type="button" tabindex="200" class="jstb_h3" title="Heading 3"><span>Heading 3</span></button><span id="space2" class="jstSpacer">&nbsp;</span><button type="button" tabindex="200" class="jstb_ul" title="Unordered list"><span>Unordered list</span></button><button type="button" tabindex="200" class="jstb_ol" title="Ordered list"><span>Ordered list</span></button><span id="space3" class="jstSpacer">&nbsp;</span><button type="button" tabindex="200" class="jstb_bq" title="Quote"><span>Quote</span></button><button type="button" tabindex="200" class="jstb_unbq" title="Remove Quote"><span>Remove Quote</span></button><button type="button" tabindex="200" class="jstb_table" title="Table"><span>Table</span></button><button type="button" tabindex="200" class="jstb_pre" title="Preformatted text"><span>Preformatted text</span></button><button type="button" tabindex="200" class="jstb_precode" title="Highlighted code"><span>Highlighted code</span></button><span id="space4" class="jstSpacer">&nbsp;</span><button type="button" tabindex="200" class="jstb_link" title="Link to a Wiki page"><span>Link to a Wiki page</span></button><button type="button" tabindex="200" class="jstb_img" title="Image"><span>Image</span></button><span id="space5" class="jstSpacer">&nbsp;</span><button type="button" tabindex="200" class="jstb_help" title="Help"><span>Help</span></button><button type="button" tabindex="200" class="jstb_macros" title="Macro"><span>Macro</span></button></div></li></ul></div><div class="jstEditor"><textarea name="issue[custom_field_values][11]" id="issue_custom_field_values_11" class="text_cf cf_11 wiki-edit" placeholder="How to fix bug" data-auto-complete="true" rows="8">Đã chỉnh lại xử lý để resolve bug theo như mô tả</textarea><div class="wiki wiki-preview hidden" id="preview_issue_custom_field_values_11"></div></div></div></p>
+  <script>
+//<![CDATA[
+var wikiToolbar = new jsToolBar(document.getElementById('issue_custom_field_values_11')); wikiToolbar.setHelpLink('/help/en/wiki_syntax_textile.html'); wikiToolbar.setPreviewUrl('/issues/preview?issue_id=126378&project_id=dsi_btms_2026'); wikiToolbar.draw();
+//]]>
+</script>
+
+
+
+
+</div>
