@@ -45,6 +45,7 @@ namespace BugCapture
         private readonly RedmineService _redmineService;
         private const int ProjectIndentSpacesPerLevel = 2;
         private const int RootParentProjectId = 0;
+        private const string FixedTrackerName = "Bug";
         private int _defaultStatusId = 1;
         private string _redmineUrl = string.Empty;
         private string _redmineApiKey = string.Empty;
@@ -57,6 +58,7 @@ namespace BugCapture
         private ProjectMembership? _selectedMembership;
         private ObservableCollection<CustomFieldControlViewModel> _customFieldControls = new();
         private bool _isSubmitting = false;
+        private bool _isTrackerSelectionEnabled = true;
 
         public ObservableCollection<CapturedImage> CapturedImages { get; } = new ObservableCollection<CapturedImage>();
         public MainViewModel EditorViewModel { get; } = new MainViewModel();
@@ -213,6 +215,19 @@ namespace BugCapture
                     OnPropertyChanged(nameof(SelectedTracker));
                     OnTrackerSelected();
                     SaveSelections();
+                }
+            }
+        }
+
+        public bool IsTrackerSelectionEnabled
+        {
+            get => _isTrackerSelectionEnabled;
+            set
+            {
+                if (_isTrackerSelectionEnabled != value)
+                {
+                    _isTrackerSelectionEnabled = value;
+                    OnPropertyChanged(nameof(IsTrackerSelectionEnabled));
                 }
             }
         }
@@ -478,6 +493,7 @@ namespace BugCapture
             CustomFieldControls.Clear(); // Clear fields first
             Trackers.Clear();
             SelectedTracker = null;
+            IsTrackerSelectionEnabled = true;
             Memberships.Clear();
 
             if (SelectedProject != null)
@@ -485,16 +501,27 @@ namespace BugCapture
                 var trackers = await _redmineService.GetTrackersForProjectAsync(SelectedProject.Identifier);
                 Trackers = new ObservableCollection<ProjectTracker>(trackers);
 
+                var fixedTracker = Trackers.FirstOrDefault(t => string.Equals(t.Name?.Trim(), FixedTrackerName, StringComparison.OrdinalIgnoreCase));
+                bool hasApiCustomFields = await _redmineService.HasApiCustomFieldsAsync();
+
                 var members = await _redmineService.GetMembershipsAsync(SelectedProject.Identifier, SelectedProject.Id);
                 Memberships = new ObservableCollection<ProjectMembership>(members.Where(m => m.User != null));
 
                 // Restore Selections
                 var settings = SettingsService.Load();
-                if (settings.LastTrackerId.HasValue)
+                if (fixedTracker != null && !hasApiCustomFields)
                 {
-                    SelectedTracker = Trackers.FirstOrDefault(t => t.Id == settings.LastTrackerId.Value);
+                    SelectedTracker = fixedTracker;
+                    IsTrackerSelectionEnabled = false;
                 }
-                if (SelectedTracker == null) SelectedTracker = Trackers.FirstOrDefault();
+                else
+                {
+                    if (settings.LastTrackerId.HasValue)
+                    {
+                        SelectedTracker = Trackers.FirstOrDefault(t => t.Id == settings.LastTrackerId.Value);
+                    }
+                    if (SelectedTracker == null) SelectedTracker = Trackers.FirstOrDefault();
+                }
 
                 if (settings.LastAssigneeId.HasValue)
                 {

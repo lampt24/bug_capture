@@ -28,6 +28,7 @@ namespace BugCapture.Services
         private const int InferenceIssueSampleLimit = 100;
         private const int ListInferenceDistinctThreshold = 20;
         private const int ProjectsPageSize = 100;
+        private const string BugTrackerName = "Bug";
         private string _baseUrl = string.Empty;
         private string _apiKey = string.Empty;
         private readonly Logger _logger;
@@ -188,6 +189,12 @@ namespace BugCapture.Services
             }
         }
 
+        public async Task<bool> HasApiCustomFieldsAsync()
+        {
+            var fields = await GetCustomFieldsAsync();
+            return fields.Count > 0;
+        }
+
         public async Task<List<CustomField>> GetCustomFieldsForTrackerAsync(string projectIdentifier, int trackerId)
         {
             var allFields = await GetCustomFieldsAsync();
@@ -211,7 +218,14 @@ namespace BugCapture.Services
 
         private async Task<List<CustomField>> GetCustomFieldsFromIssueFormHtmlAsync(string projectIdentifier, int trackerId)
         {
-            string cacheKey = $"{projectIdentifier}:{trackerId}";
+            int? bugTrackerId = await ResolveBugTrackerIdForProjectAsync(projectIdentifier);
+            if (!bugTrackerId.HasValue)
+            {
+                _logger.WriteLine($"Redmine: Project '{projectIdentifier}' has no '{BugTrackerName}' tracker. Skip fixed attributes HTML.");
+                return new List<CustomField>();
+            }
+
+            string cacheKey = $"{projectIdentifier}:{bugTrackerId.Value}";
             if (_htmlCustomFieldsCache.TryGetValue(cacheKey, out var cached) && DateTime.UtcNow - cached.cachedAtUtc < InferredCustomFieldsCacheDuration)
             {
                 return cached.fields.ToList();
@@ -225,12 +239,12 @@ namespace BugCapture.Services
 
                 if (parsed.Count > 0)
                 {
-                    _logger.WriteLine($"Redmine: Parsed {parsed.Count} custom fields from fixed attributes HTML.");
+                    _logger.WriteLine($"Redmine: Parsed {parsed.Count} custom fields from fixed attributes HTML (tracker='{BugTrackerName}').");
                     _htmlCustomFieldsCache[cacheKey] = (DateTime.UtcNow, parsed);
                 }
                 else
                 {
-                    _logger.WriteLine("Redmine: Could not parse any custom fields from fixed attributes HTML.");
+                    _logger.WriteLine($"Redmine: Could not parse any custom fields from fixed attributes HTML (tracker='{BugTrackerName}').");
                 }
 
                 return parsed;
@@ -240,6 +254,15 @@ namespace BugCapture.Services
                 _logger.WriteException(ex, "Redmine Error (GetCustomFieldsFromIssueFormHtml)");
                 return new List<CustomField>();
             }
+        }
+
+        private async Task<int?> ResolveBugTrackerIdForProjectAsync(string projectIdentifier)
+        {
+            var trackers = await GetTrackersForProjectAsync(projectIdentifier);
+            var bugTracker = trackers.FirstOrDefault(tracker =>
+                string.Equals(tracker.Name?.Trim(), BugTrackerName, StringComparison.OrdinalIgnoreCase));
+
+            return bugTracker?.Id;
         }
 
         private async Task<string> LoadFixedAttributesHtmlAsync()

@@ -320,6 +320,7 @@
 								  BorderThickness="0" CornerRadius="0"
 								  Background="{DynamicResource SurfaceBrush}"
 								  ItemsSource="{Binding Trackers}"
+								  IsEnabled="{Binding IsTrackerSelectionEnabled}"
 								  SelectedItem="{Binding SelectedTracker}" Margin="0,0,12,0">
 							<ComboBox.ItemTemplate>
 								<DataTemplate>
