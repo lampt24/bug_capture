@@ -259,12 +259,12 @@ namespace BugCapture
         public ProjectMembership? SelectedMembership
         {
             get => _selectedMembership;
-            set 
-            { 
+            set
+            {
                 if (_selectedMembership != value)
                 {
-                    _selectedMembership = value; 
-                    OnPropertyChanged(nameof(SelectedMembership)); 
+                    _selectedMembership = value;
+                    OnPropertyChanged(nameof(SelectedMembership));
                     SaveSelections();
                 }
             }
@@ -431,7 +431,7 @@ namespace BugCapture
             // Apply Theme
             if (Avalonia.Application.Current != null)
             {
-                Avalonia.Application.Current.RequestedThemeVariant = 
+                Avalonia.Application.Current.RequestedThemeVariant =
                     settings.IsDarkMode ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
             }
 
@@ -504,7 +504,7 @@ namespace BugCapture
             {
                 SelectedProjectItem = Projects.FirstOrDefault(p => p.Project.Id == settings.LastProjectId.Value);
             }
-            
+
             if (SelectedProjectItem == null)
             {
                 SelectedProjectItem = Projects.FirstOrDefault();
@@ -634,7 +634,7 @@ namespace BugCapture
                 if (trackerMatch)
                 {
                     var viewModel = new CustomFieldControlViewModel(field);
-                    
+
                     // Restore saved value if exists
                     if (settings.TrackerCustomFields.TryGetValue(trackerIdStr, out var fieldValues))
                     {
@@ -646,8 +646,8 @@ namespace BugCapture
                             }
                         }
                     }
-                    
-                    viewModel.PropertyChanged += (s, ev) => 
+
+                    viewModel.PropertyChanged += (s, ev) =>
                     {
                         if (ev.PropertyName == nameof(CustomFieldControlViewModel.Value))
                         {
@@ -729,7 +729,7 @@ namespace BugCapture
 
                 foreach (var fieldCtrl in CustomFieldControls)
                 {
-                    if (fieldCtrl.Value == null) 
+                    if (fieldCtrl.Value == null)
                     {
                         _logger?.WriteLine($"[Submit] Field {fieldCtrl.Field.Name} (Id:{fieldCtrl.Field.Id}) is NULL/Empty. Skipping.");
                         continue;
@@ -1171,7 +1171,7 @@ namespace BugCapture
             if (Avalonia.Application.Current != null)
             {
                 var isDark = Avalonia.Application.Current.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark;
-                
+
                 Avalonia.Application.Current.RequestedThemeVariant =
                     isDark ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
 
