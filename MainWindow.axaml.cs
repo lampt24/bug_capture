@@ -275,10 +275,10 @@ namespace BugCapture
             }
         }
 
-        private void SaveSelections()
+        private void SaveSelections(bool force = false)
         {
             // Don't save if we're still initializing
-            if (!_isInitialized) return;
+            if (!_isInitialized && !force) return;
 
             var settings = SettingsService.Load();
             settings.LastProjectId = SelectedProject?.Id;
@@ -440,7 +440,7 @@ namespace BugCapture
                     settings.IsDarkMode ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
             }
 
-            _bugPrefix = settings.LastIssuePrefix;
+            BugPrefix = settings.LastIssuePrefix;
         }
 
         protected override async void OnOpened(EventArgs e)
@@ -668,6 +668,8 @@ namespace BugCapture
 
         public async void OnSubmitToRedmineClick(object sender, RoutedEventArgs e)
         {
+            SaveSelections(force: true);
+
             if (SelectedProject == null || SelectedTracker == null)
             {
                 StatusText = "Please select Project and Tracker.";
@@ -693,29 +695,61 @@ namespace BugCapture
             try
             {
                 var uploads = new List<Upload>();
-                foreach (var img in CapturedImages)
+                var attachmentsBySizeDesc = CapturedImages
+                    .OrderByDescending(item =>
+                    {
+                        try
+                        {
+                            return new System.IO.FileInfo(item.FilePath).Length;
+                        }
+                        catch
+                        {
+                            return -1L;
+                        }
+                    })
+                    .ToList();
+
+                foreach (var img in attachmentsBySizeDesc)
                 {
-                    var upload = await _redmineService.UploadFileAsync(img.FilePath);
+                    Upload? upload;
+                    try
+                    {
+                        upload = await _redmineService.UploadFileAsync(img.FilePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        var friendlyMessage = BuildFriendlyUploadErrorMessage(img.FilePath, ex);
+                        var uploadErrorDetail =
+                            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Redmine Error (UploadFile):{Environment.NewLine}{ex}";
+
+                        _logger.WriteLine(uploadErrorDetail);
+                        StatusText = friendlyMessage;
+                        System.Windows.Forms.MessageBox.Show(
+                            friendlyMessage,
+                            "Upload thất bại",
+                            System.Windows.Forms.MessageBoxButtons.OK,
+                            System.Windows.Forms.MessageBoxIcon.Error);
+                        return;
+                    }
+
                     if (upload != null) uploads.Add(upload);
                 }
 
                 var finalDescription = BugDescription;
-                if (uploads.Count > 0)
+                var uploadedImageFileNames = new HashSet<string>(
+                    uploads.Select(u => u.FileName ?? string.Empty)
+                           .Where(name => !string.IsNullOrWhiteSpace(name))
+                           .Where(name => CapturedImages.Any(item =>
+                               item.IsImage &&
+                               string.Equals(System.IO.Path.GetFileName(item.FilePath), name, StringComparison.OrdinalIgnoreCase))),
+                    StringComparer.OrdinalIgnoreCase);
+
+                if (uploadedImageFileNames.Count > 0)
                 {
                     finalDescription += "\n\n" + (System.Globalization.CultureInfo.CurrentCulture.Name.StartsWith("vi") ? "--- Bằng chứng (Evidence): ---" : "--- Evidence: ---") + "\n";
-                    foreach (var upload in uploads)
+                    foreach (var fileName in uploadedImageFileNames)
                     {
-                        var attachment = CapturedImages.FirstOrDefault(item =>
-                            string.Equals(System.IO.Path.GetFileName(item.FilePath), upload.FileName, StringComparison.OrdinalIgnoreCase));
-
-                        if (attachment != null && attachment.IsImage)
-                        {
-                            finalDescription += $"\n!{upload.FileName}!";
-                        }
-                        else
-                        {
-                            finalDescription += $"\nattachment:{upload.FileName}";
-                        }
+                        finalDescription += $"\n!{fileName}!";
                     }
                 }
 
@@ -725,7 +759,7 @@ namespace BugCapture
                     Tracker = IdentifiableName.Create<Tracker>(SelectedTracker.Id),
                     Status = IdentifiableName.Create<IssueStatus>(_defaultStatusId),
                     Priority = IdentifiableName.Create<IssuePriority>(2), // Normal
-                    Subject = string.IsNullOrWhiteSpace(BugPrefix) ? BugTitle : $"[{BugPrefix}] {BugTitle}",
+                    Subject = string.IsNullOrWhiteSpace(BugPrefix) ? BugTitle : $"【{BugPrefix}】{BugTitle}",
                     Description = finalDescription,
                     Uploads = uploads,
                     CustomFields = new List<IssueCustomField>(),
@@ -796,6 +830,25 @@ namespace BugCapture
         public async void OnRefreshRedmineClick(object sender, RoutedEventArgs e)
         {
             await LoadRedmineData();
+        }
+
+        private static string BuildFriendlyUploadErrorMessage(string filePath, Exception ex)
+        {
+            var fileName = System.IO.Path.GetFileName(filePath);
+            var message = ex.Message ?? string.Empty;
+
+            if (message.Contains("exceeds the maximum allowed file size", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"Không thể upload '{fileName}' vì file vượt quá giới hạn dung lượng.";
+            }
+
+            if (message.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("timed out", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"Upload '{fileName}' bị quá thời gian chờ. Vui lòng thử lại.";
+            }
+
+            return $"Không thể upload '{fileName}'. Vui lòng kiểm tra file hoặc thử lại sau.";
         }
 
         private EditorView? GetActiveEditorView()
@@ -1588,6 +1641,7 @@ namespace BugCapture
 
         protected override void OnClosed(EventArgs e)
         {
+            SaveSelections(force: true);
             EditorViewModel.PropertyChanged -= OnEditorViewModelPropertyChanged;
             base.OnClosed(e);
         }
