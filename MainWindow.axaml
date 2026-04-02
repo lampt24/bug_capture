@@ -478,6 +478,7 @@
 							IsVisible="{Binding IsEditorVisible}">
 						<editor:EditorView x:Name="EditorViewControl"
 										   DataContext="{Binding EditorViewModel}"
+										   PointerPressed="OnEditorPointerPressed"
 										   HorizontalAlignment="Stretch"
 										   VerticalAlignment="Stretch" />
 					</Border>
@@ -502,7 +503,9 @@
 				  IsVisible="{Binding EditorViewModel.IsEditorMaximized}"
 				  Background="{DynamicResource BgBrush}"
 				  ZIndex="1000">
-				<editor:EditorView DataContext="{Binding EditorViewModel}"
+				<editor:EditorView x:Name="FullscreenEditorViewControl"
+								   DataContext="{Binding EditorViewModel}"
+								   PointerPressed="OnEditorPointerPressed"
 								   HorizontalAlignment="Stretch"
 								   VerticalAlignment="Stretch" />
 

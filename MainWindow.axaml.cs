@@ -20,6 +20,8 @@ namespace BugCapture
     public partial class MainWindow : Window, System.ComponentModel.INotifyPropertyChanged
     {
         private readonly ShareXCaptureService _captureService;
+        private const int ThumbnailWidthPixels = 100;
+        private const int ThumbnailQualityPercent = 80;
         private bool _isInitialized = false;
         private int _evidenceCounter = 1;
         private string _statusText = "Ready";
@@ -35,6 +37,8 @@ namespace BugCapture
         private double _expandedHeight = 850;
         private string _currentDateTime = string.Empty;
         private System.Threading.Timer? _clockTimer;
+        private bool _isSynchronizingEditors;
+        private EditorView? _lastInteractedEditor;
         private readonly Logger _logger = new Logger();
 
         // Redmine Integration
@@ -296,6 +300,7 @@ namespace BugCapture
             // Subscribe to editor events
             EditorViewModel.SaveRequested += OnEditorSaveRequested;
             EditorViewModel.CopyRequested += OnEditorCopyRequested;
+            EditorViewModel.PropertyChanged += OnEditorViewModelPropertyChanged;
 
             // Start live clock
             UpdateClock(null);
@@ -594,14 +599,121 @@ namespace BugCapture
             await LoadRedmineData();
         }
 
+        private EditorView? GetActiveEditorView()
+        {
+            if (_lastInteractedEditor != null)
+            {
+                return _lastInteractedEditor;
+            }
+
+            if (EditorViewModel.IsEditorMaximized)
+            {
+                return FullscreenEditorViewControl;
+            }
+
+            return EditorViewControl;
+        }
+
+        private EditorView? GetInactiveEditorView()
+        {
+            var activeEditor = GetActiveEditorView();
+            if (ReferenceEquals(activeEditor, EditorViewControl))
+            {
+                return FullscreenEditorViewControl;
+            }
+
+            return EditorViewControl;
+        }
+
+        private void UpdateThumbnailFromSnapshot(SkiaSharp.SKBitmap snapshot)
+        {
+            if (_currentlyEditingImage == null)
+            {
+                return;
+            }
+
+            int thumbHeight = Math.Max(1, (int)(snapshot.Height * (double)ThumbnailWidthPixels / snapshot.Width));
+            using (var resized = snapshot.Resize(new SkiaSharp.SKImageInfo(ThumbnailWidthPixels, thumbHeight), SkiaSharp.SKFilterQuality.Medium))
+            {
+                if (resized == null)
+                {
+                    return;
+                }
+
+                using (var thumbImage = SkiaSharp.SKImage.FromBitmap(resized))
+                using (var thumbData = thumbImage.Encode(SkiaSharp.SKEncodedImageFormat.Png, ThumbnailQualityPercent))
+                using (var ms = new System.IO.MemoryStream())
+                {
+                    thumbData.SaveTo(ms);
+                    ms.Position = 0;
+                    _currentlyEditingImage.Thumbnail = new Avalonia.Media.Imaging.Bitmap(ms);
+                }
+            }
+        }
+
+        private void SyncEditors(bool updateThumbnail)
+        {
+            if (_isSynchronizingEditors || _currentlyEditingImage == null)
+            {
+                return;
+            }
+
+            var activeEditorView = GetActiveEditorView();
+            var inactiveEditorView = GetInactiveEditorView();
+            if (activeEditorView == null || inactiveEditorView == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _isSynchronizingEditors = true;
+                using (var snapshot = activeEditorView.GetSnapshot())
+                {
+                    if (snapshot == null)
+                    {
+                        return;
+                    }
+
+                    inactiveEditorView.LoadSnapshot(snapshot);
+                    if (updateThumbnail)
+                    {
+                        UpdateThumbnailFromSnapshot(snapshot);
+                    }
+                }
+            }
+            finally
+            {
+                _isSynchronizingEditors = false;
+            }
+        }
+
+        private void OnEditorViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(EditorViewModel.IsEditorMaximized))
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    SyncEditors(updateThumbnail: true);
+                }, Avalonia.Threading.DispatcherPriority.Background);
+            }
+        }
+
         private async void OnEditorSaveRequested()
         {
             if (_currentlyEditingImage == null) return;
 
+            var activeEditorView = GetActiveEditorView();
+            if (activeEditorView == null)
+            {
+                StatusText = "Save Error: Active editor is not available.";
+                return;
+            }
+
             StatusText = "Saving changes...";
             try
             {
-                using (var snapshot = EditorViewControl.GetSnapshot())
+                using (var snapshot = activeEditorView.GetSnapshot())
                 {
                     if (snapshot != null)
                     {
@@ -615,19 +727,13 @@ namespace BugCapture
                             data.SaveTo(stream);
                         }
 
-                        // Update Thumbnail in UI
-                        // Create a small version for thumbnail
-                        int thumbWidth = 100;
-                        int thumbHeight = (int)(snapshot.Height * (double)thumbWidth / snapshot.Width);
-                        using (var resized = snapshot.Resize(new SkiaSharp.SKImageInfo(thumbWidth, thumbHeight), SkiaSharp.SKFilterQuality.Medium))
-                        using (var thumbImage = SkiaSharp.SKImage.FromBitmap(resized))
-                        using (var thumbData = thumbImage.Encode(SkiaSharp.SKEncodedImageFormat.Png, 80))
-                        using (var ms = new System.IO.MemoryStream())
+                        var inactiveEditorView = GetInactiveEditorView();
+                        if (inactiveEditorView != null)
                         {
-                            thumbData.SaveTo(ms);
-                            ms.Position = 0;
-                            _currentlyEditingImage.Thumbnail = new Avalonia.Media.Imaging.Bitmap(ms);
+                            inactiveEditorView.LoadSnapshot(snapshot);
                         }
+
+                        UpdateThumbnailFromSnapshot(snapshot);
 
                         EditorViewModel.IsDirty = false;
                         StatusText = $"Saved {_currentlyEditingImage.CaptureType}.";
@@ -646,13 +752,14 @@ namespace BugCapture
             StatusText = "Copy: starting...";
             try
             {
-                if (EditorViewControl == null)
+                var activeEditorView = GetActiveEditorView();
+                if (activeEditorView == null)
                 {
-                    StatusText = "Copy Error: EditorViewControl is null.";
+                    StatusText = "Copy Error: Active editor is not available.";
                     return;
                 }
 
-                using (var snapshot = EditorViewControl.GetSnapshot())
+                using (var snapshot = activeEditorView.GetSnapshot())
                 {
                     if (snapshot == null)
                     {
@@ -855,6 +962,14 @@ namespace BugCapture
             }
         }
 
+        public void OnEditorPointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            if (sender is EditorView view)
+            {
+                _lastInteractedEditor = view;
+            }
+        }
+
         private void OnThumbnailClickInternal(CapturedImage image, bool forceShowEditor = true)
         {
             if (image == null) return;
@@ -905,6 +1020,7 @@ namespace BugCapture
                         EditorViewModel.LastSavedPath = image.FilePath;
                         EditorViewModel.ImageFilePath = image.FilePath;
                         EditorViewModel.ImageDimensions = $"{bitmap.Size.Width} x {bitmap.Size.Height}";
+                        _lastInteractedEditor = EditorViewControl;
 
                         // Reset dirty flag after all internal load-time events (HistoryChanged, etc.) have processed.
                         // Those events often run at Normal priority, so we use Background priority to ensure this is the final word.
@@ -920,6 +1036,12 @@ namespace BugCapture
                 StatusText = $"Error loading editor: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine($"Failed to load image in editor: {ex.Message}");
             }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            EditorViewModel.PropertyChanged -= OnEditorViewModelPropertyChanged;
+            base.OnClosed(e);
         }
     }
 }

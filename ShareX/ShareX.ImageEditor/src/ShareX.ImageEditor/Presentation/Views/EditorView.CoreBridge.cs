@@ -125,6 +125,22 @@ namespace ShareX.ImageEditor.Presentation.Views
             }
         }
 
+        public void LoadSnapshot(SkiaSharp.SKBitmap snapshot)
+        {
+            var snapshotCopy = snapshot?.Copy();
+            if (snapshotCopy == null)
+            {
+                return;
+            }
+
+            _editorCore.LoadImage(snapshotCopy);
+            if (_canvasControl != null)
+            {
+                _canvasControl.Initialize(snapshotCopy.Width, snapshotCopy.Height);
+                RenderCore();
+            }
+        }
+
         public Task<Bitmap?> RenderSnapshot()
         {
             var skBitmap = GetSnapshot();
