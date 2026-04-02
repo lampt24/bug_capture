@@ -601,22 +601,26 @@ namespace BugCapture.Services
         {
             if (fieldFormat == "bool")
             {
-                return node.GetAttributeValue("checked", null) != null ? "1" : "0";
+                return "0";
             }
 
             if (node.Name.Equals("select", StringComparison.OrdinalIgnoreCase))
             {
-                var selected = node.SelectSingleNode("./option[@selected]") ?? node.SelectSingleNode("./option[@selected='selected']");
-                return selected?.GetAttributeValue("value", string.Empty);
+                var emptyOption = node.SelectSingleNode("./option[@value='']");
+                if (emptyOption != null)
+                {
+                    return string.Empty;
+                }
+
+                return string.Empty;
             }
 
             if (node.Name.Equals("textarea", StringComparison.OrdinalIgnoreCase))
             {
-                var text = HtmlEntity.DeEntitize(node.InnerText ?? string.Empty);
-                return string.IsNullOrWhiteSpace(text) ? string.Empty : text;
+                return string.Empty;
             }
 
-            return node.GetAttributeValue("value", string.Empty);
+            return string.Empty;
         }
 
         private static List<(string label, string value)> ParseSelectOptions(HtmlNode node)
