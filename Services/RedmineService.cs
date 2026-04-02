@@ -27,6 +27,7 @@ namespace BugCapture.Services
         private static readonly TimeSpan InferredCustomFieldsCacheDuration = TimeSpan.FromMinutes(5);
         private const int InferenceIssueSampleLimit = 100;
         private const int ListInferenceDistinctThreshold = 20;
+        private const int ProjectsPageSize = 100;
         private string _baseUrl = string.Empty;
         private string _apiKey = string.Empty;
         private readonly Logger _logger;
@@ -71,11 +72,35 @@ namespace BugCapture.Services
             try
             {
                 _logger.WriteLine("Redmine: Fetching projects...");
-                var projects = await _manager.GetPaginatedObjectsAsync<Project>(new NameValueCollection());
-                int projectsCount = 0;
-                if (projects != null && projects.Items != null) projectsCount = projects.Items.Count();
-                _logger.WriteLine($"Redmine: Found {projectsCount} projects.");
-                return projects != null && projects.Items != null ? projects.Items.ToList() : new List<Project>();
+                var allProjects = new List<Project>();
+                int offset = 0;
+
+                while (true)
+                {
+                    var parameters = new NameValueCollection
+                    {
+                        { "offset", offset.ToString() },
+                        { "limit", ProjectsPageSize.ToString() }
+                    };
+
+                    var page = await _manager.GetPaginatedObjectsAsync<Project>(parameters);
+                    var items = page?.Items?.ToList() ?? new List<Project>();
+                    if (items.Count == 0)
+                    {
+                        break;
+                    }
+
+                    allProjects.AddRange(items);
+                    offset += items.Count;
+
+                    if (items.Count < ProjectsPageSize)
+                    {
+                        break;
+                    }
+                }
+
+                _logger.WriteLine($"Redmine: Found {allProjects.Count} projects.");
+                return allProjects;
             }
             catch (Exception ex)
             {

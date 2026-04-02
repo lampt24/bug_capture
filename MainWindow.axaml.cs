@@ -43,12 +43,15 @@ namespace BugCapture
 
         // Redmine Integration
         private readonly RedmineService _redmineService;
+        private const int ProjectIndentSpacesPerLevel = 2;
+        private const int RootParentProjectId = 0;
         private int _defaultStatusId = 1;
         private string _redmineUrl = string.Empty;
         private string _redmineApiKey = string.Empty;
-        private ObservableCollection<Project> _projects = new();
+        private ObservableCollection<ProjectComboItem> _projects = new();
         private ObservableCollection<ProjectTracker> _trackers = new();
         private Project? _selectedProject;
+        private ProjectComboItem? _selectedProjectItem;
         private ProjectTracker? _selectedTracker;
         private ObservableCollection<ProjectMembership> _memberships = new();
         private ProjectMembership? _selectedMembership;
@@ -155,10 +158,24 @@ namespace BugCapture
             set { _redmineApiKey = value; OnPropertyChanged(nameof(RedmineApiKey)); }
         }
 
-        public ObservableCollection<Project> Projects
+        public ObservableCollection<ProjectComboItem> Projects
         {
             get => _projects;
             set { _projects = value; OnPropertyChanged(nameof(Projects)); }
+        }
+
+        public ProjectComboItem? SelectedProjectItem
+        {
+            get => _selectedProjectItem;
+            set
+            {
+                if (_selectedProjectItem != value)
+                {
+                    _selectedProjectItem = value;
+                    OnPropertyChanged(nameof(SelectedProjectItem));
+                    SelectedProject = value?.Project;
+                }
+            }
         }
 
         public ObservableCollection<ProjectTracker> Trackers
@@ -374,8 +391,7 @@ namespace BugCapture
             _redmineService.Initialize(RedmineUrl, RedmineApiKey);
 
             var projects = await _redmineService.GetProjectsAsync();
-            Projects.Clear();
-            foreach (var p in projects) Projects.Add(p);
+            Projects = BuildProjectTreeItems(projects);
 
             // Fetch default status ID
             var statuses = await _redmineService.GetStatusesAsync();
@@ -390,15 +406,71 @@ namespace BugCapture
             var settings = SettingsService.Load();
             if (settings.LastProjectId.HasValue)
             {
-                SelectedProject = Projects.FirstOrDefault(p => p.Id == settings.LastProjectId.Value);
+                SelectedProjectItem = Projects.FirstOrDefault(p => p.Project.Id == settings.LastProjectId.Value);
             }
             
-            if (SelectedProject == null)
+            if (SelectedProjectItem == null)
             {
-                SelectedProject = Projects.FirstOrDefault();
+                SelectedProjectItem = Projects.FirstOrDefault();
             }
 
             StatusText = Projects.Count > 0 ? "Redmine connected." : "Failed to load Redmine projects.";
+        }
+
+        private ObservableCollection<ProjectComboItem> BuildProjectTreeItems(List<Project> sourceProjects)
+        {
+            var result = new ObservableCollection<ProjectComboItem>();
+            if (sourceProjects == null || sourceProjects.Count == 0)
+            {
+                return result;
+            }
+
+            var groupedByParent = sourceProjects
+                .GroupBy(project => project.Parent?.Id ?? RootParentProjectId)
+                .ToDictionary(group => group.Key, group => group.OrderBy(project => project.Name).ToList());
+
+            var visitedProjectIds = new HashSet<int>();
+
+            void AppendChildren(int parentId, int level)
+            {
+                if (!groupedByParent.TryGetValue(parentId, out var children))
+                {
+                    return;
+                }
+
+                foreach (var child in children)
+                {
+                    if (!visitedProjectIds.Add(child.Id))
+                    {
+                        continue;
+                    }
+
+                    string indent = new string(' ', level * ProjectIndentSpacesPerLevel);
+                    result.Add(new ProjectComboItem
+                    {
+                        Project = child,
+                        DisplayName = $"{indent}{child.Name}"
+                    });
+
+                    AppendChildren(child.Id, level + 1);
+                }
+            }
+
+            AppendChildren(RootParentProjectId, 0);
+
+            foreach (var project in sourceProjects.OrderBy(project => project.Name))
+            {
+                if (visitedProjectIds.Add(project.Id))
+                {
+                    result.Add(new ProjectComboItem
+                    {
+                        Project = project,
+                        DisplayName = project.Name
+                    });
+                }
+            }
+
+            return result;
         }
 
         private async void OnProjectSelected()
