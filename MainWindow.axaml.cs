@@ -1433,7 +1433,8 @@ namespace BugCapture
                     if (upload != null) uploads.Add(upload);
                 }
 
-                var finalDescription = BugDescription;
+                var mattermostDescription = BugDescription.Trim();
+                var redmineDescription = BugDescription;
                 var uploadedImageFileNames = new HashSet<string>(
                     uploads.Select(u => u.FileName ?? string.Empty)
                            .Where(name => !string.IsNullOrWhiteSpace(name))
@@ -1444,10 +1445,10 @@ namespace BugCapture
 
                 if (uploadedImageFileNames.Count > 0)
                 {
-                    finalDescription += "\n\n" + (System.Globalization.CultureInfo.CurrentCulture.Name.StartsWith("vi") ? "--- Bằng chứng (Evidence): ---" : "--- Evidence: ---") + "\n";
+                    redmineDescription += "\n\n" + (System.Globalization.CultureInfo.CurrentCulture.Name.StartsWith("vi") ? "--- Bằng chứng (Evidence): ---" : "--- Evidence: ---") + "\n";
                     foreach (var fileName in uploadedImageFileNames)
                     {
-                        finalDescription += $"\n!{fileName}!";
+                        redmineDescription += $"\n!{fileName}!";
                     }
                 }
 
@@ -1458,7 +1459,7 @@ namespace BugCapture
                     Status = IdentifiableName.Create<IssueStatus>(_defaultStatusId),
                     Priority = IdentifiableName.Create<IssuePriority>(2), // Normal
                     Subject = string.IsNullOrWhiteSpace(BugPrefix) ? BugTitle : $"【{BugPrefix}】{BugTitle}",
-                    Description = finalDescription,
+                    Description = redmineDescription,
                     Uploads = uploads,
                     CustomFields = new List<IssueCustomField>(),
                     AssignedTo = SelectedMembership?.User
@@ -1497,7 +1498,7 @@ namespace BugCapture
 
                     try
                     {
-                        await SendMattermostNotificationsAsync(createdIssue.Id, issue.Subject, finalDescription, attachmentFilePaths);
+                        await SendMattermostNotificationsAsync(createdIssue.Id, issue.Subject, mattermostDescription, attachmentFilePaths);
                     }
                     catch (Exception ex)
                     {
@@ -1560,7 +1561,7 @@ namespace BugCapture
             return $"Không thể upload '{fileName}'. Vui lòng kiểm tra file hoặc thử lại sau.";
         }
 
-        private async Task SendMattermostNotificationsAsync(int issueId, string issueSubject, string issueDescription, List<string> attachmentFilePaths)
+        private async Task SendMattermostNotificationsAsync(int issueId, string issueSubject, string mattermostDescription, List<string> attachmentFilePaths)
         {
             if (!_mattermostService.IsConfigured)
             {
@@ -1596,7 +1597,7 @@ namespace BugCapture
             var sb = new System.Text.StringBuilder();
             sb.AppendLine($"[BUG] {issueSubject}");
             sb.AppendLine();
-            sb.AppendLine(issueDescription);
+            sb.AppendLine(mattermostDescription);
             if (!string.IsNullOrWhiteSpace(redmineIssueUrl))
             {
                 sb.AppendLine();
@@ -1614,7 +1615,7 @@ namespace BugCapture
             var interactiveOptions = new MattermostService.MattermostInteractivePostOptions
             {
                 Pretext = issueSubject,
-                Text = issueDescription,
+                Text = mattermostDescription,
                 Assignee = string.IsNullOrWhiteSpace(assigneeMention) ? (SelectedMembership?.User?.Name ?? string.Empty) : assigneeMention,
                 Creator = creatorMention,
                 CreatedAtText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),

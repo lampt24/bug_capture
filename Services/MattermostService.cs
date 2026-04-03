@@ -346,6 +346,7 @@ namespace BugCapture.Services
           new MattermostAttachmentDto
           {
             Pretext = string.Empty,
+            Color = "#D32F2F",
             Title = options.Pretext,
             Text = options.Text,
             Fields = new List<MattermostAttachmentFieldDto>
@@ -496,6 +497,9 @@ namespace BugCapture.Services
     {
       [JsonPropertyName("pretext")]
       public string Pretext { get; set; } = string.Empty;
+
+      [JsonPropertyName("color")]
+      public string Color { get; set; } = string.Empty;
 
       [JsonPropertyName("title")]
       public string Title { get; set; } = string.Empty;
