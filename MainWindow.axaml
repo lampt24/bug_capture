@@ -414,7 +414,7 @@
 					<Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1" Padding="0,8" Margin="0,0,0,8">
 						<Grid ColumnDefinitions="100,*" ColumnSpacing="12">
 							<TextBlock Grid.Column="0" Classes="card-label" Text="MATTERMOST" Width="100" VerticalAlignment="Top" Margin="0,8,0,0" />
-							<Grid Grid.Column="1" ColumnDefinitions="Auto,2*,Auto,2*,Auto,2*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="6">
+							<Grid Grid.Column="1" ColumnDefinitions="Auto,2*,Auto,2*,Auto,2*" RowDefinitions="Auto" ColumnSpacing="10" RowSpacing="6">
 								<RadioButton Grid.Row="0" Grid.Column="0" Content="GỬI CHANNEL"
 											 IsChecked="{Binding SendToMattermostChannels}"
 											 IsEnabled="{Binding IsMattermostReady}"
@@ -458,7 +458,7 @@
 										 GroupName="MattermostSendMode"
 										 VerticalAlignment="Center"
 										 FontSize="12" />
-								<TextBox Grid.Row="0" Grid.Column="5"
+								<TextBox x:Name="MattermostMentionTextBox" Grid.Row="0" Grid.Column="5"
 										 Text="{Binding MattermostMentionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
 										 IsEnabled="{Binding MentionMattermostUsers}"
 										 HorizontalAlignment="Stretch"
@@ -467,16 +467,22 @@
 										 Watermark="@username1 @username2"
 										 TextChanged="OnMattermostMentionTextChanged" />
 
-								<Border Grid.Row="1" Grid.Column="5"
-										Background="{DynamicResource SurfaceBrush}"
-										BorderBrush="{DynamicResource BorderBrush}"
-										BorderThickness="1"
-										Padding="4"
-										IsVisible="{Binding IsMattermostMentionSuggestionVisible}">
-									<ListBox ItemsSource="{Binding MattermostMentionSuggestions}"
-											 MaxHeight="140"
-											 SelectionChanged="OnMattermostMentionSuggestionSelected" />
-								</Border>
+								<Popup PlacementTarget="{Binding #MattermostMentionTextBox}"
+									   IsOpen="{Binding IsMattermostMentionSuggestionVisible}"
+									   Placement="Bottom"
+									   HorizontalOffset="0"
+									   VerticalOffset="2"
+									   IsLightDismissEnabled="True">
+									<Border Background="{DynamicResource SurfaceBrush}"
+											BorderBrush="{DynamicResource BorderBrush}"
+											BorderThickness="1"
+											Padding="4"
+											MinWidth="260">
+										<ListBox ItemsSource="{Binding MattermostMentionSuggestions}"
+												 MaxHeight="180"
+												 SelectionChanged="OnMattermostMentionSuggestionSelected" />
+									</Border>
+								</Popup>
 							</Grid>
 						</Grid>
 					</Border>
