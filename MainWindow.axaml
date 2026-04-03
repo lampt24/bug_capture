@@ -274,28 +274,10 @@
 			<Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="6">
 
 				<!-- ── Row 0: Bug Description ── -->
-				<Grid Grid.Row="0" Margin="0,10,0,15" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
-					<!-- Title Row -->
-					<TextBlock Grid.Row="0" Grid.Column="0" Classes="card-label" Text="TIÊU ĐỀ" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
-					<Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="1*,5*" Margin="0,0,0,10">
-						<TextBox Grid.Column="0" Text="{Binding BugPrefix, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-								 Height="32" Margin="0,0,10,0" VerticalAlignment="Center"
-								 Watermark="Prefix..." />
-						<TextBox Grid.Column="1" Text="{Binding BugTitle}"
-								 Height="32" VerticalAlignment="Center"
-								 Watermark="Nhập tiêu đề bug tại đây..." />
-					</Grid>
-
-					<!-- Description Row -->
-					<TextBlock Grid.Row="1" Grid.Column="0" Classes="card-label" Text="MÔ TẢ BUG" Width="100" Margin="0,4,12,10" VerticalAlignment="Top" />
-					<TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BugDescription}"
-							 AcceptsReturn="True" TextWrapping="Wrap" Height="120" Margin="0,0,0,10"
-							 VerticalAlignment="Top" VerticalContentAlignment="Top"
-							 Watermark="Mô tả chi tiết: bước tái hiện, kết quả mong đợi, kết quả thực tế..." />
-
-					<!-- Combined Redmine Row (Project, Tracker, Assignee) -->
-					<TextBlock Grid.Row="2" Grid.Column="0" Classes="card-label" Text="PROJECT" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
-					<Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto,*,Auto,*" Margin="0,0,0,10">
+				<Grid Grid.Row="0" Margin="0,10,0,15" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+					<!-- Combined Redmine Row (Project, Tracker) -->
+					<TextBlock Grid.Row="0" Grid.Column="0" Classes="card-label" Text="PROJECT" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
+					<Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto,*" Margin="0,0,0,10">
 						<!-- Project -->
 						<Grid Grid.Column="0" ColumnDefinitions="*,Auto" Margin="0,0,12,0">
 							<ComboBox HorizontalAlignment="Stretch"
@@ -306,7 +288,7 @@
 									  SelectedItem="{Binding SelectedProjectItem}">
 								<ComboBox.ItemTemplate>
 									<DataTemplate>
-												<TextBlock Text="{Binding DisplayName}" />
+											<TextBlock Text="{Binding DisplayName}" />
 									</DataTemplate>
 								</ComboBox.ItemTemplate>
 							</ComboBox>
@@ -332,35 +314,62 @@
 							</ComboBox.ItemTemplate>
 						</ComboBox>
 
-						<!-- Assignee -->
-						<TextBlock Grid.Column="3" Classes="card-label" Text="ASSIGNEE" VerticalAlignment="Center" Margin="0,0,12,0" />
-						<ComboBox Grid.Column="4" HorizontalAlignment="Stretch"
-								  Height="32" FontSize="12" Padding="8,4"
-								  BorderThickness="0" CornerRadius="0"
-								  Background="{DynamicResource SurfaceBrush}"
-								  ItemsSource="{Binding Memberships}"
-								  PlaceholderText="Chọn (Tất cả)"
-								  SelectedItem="{Binding SelectedMembership}">
-							<ComboBox.ItemTemplate>
-								<DataTemplate>
-									<TextBlock Text="{Binding User.Name}" />
-								</DataTemplate>
-							</ComboBox.ItemTemplate>
-						</ComboBox>
 					</Grid>
 
+					<!-- Title Row -->
+					<TextBlock Grid.Row="1" Grid.Column="0" Classes="card-label" Text="TIÊU ĐỀ" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
+					<Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="1*,5*" Margin="0,0,0,10">
+						<TextBox Grid.Column="0" Text="{Binding BugPrefix, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+								 Height="32" Margin="0,0,10,0" VerticalAlignment="Center"
+								 Watermark="Prefix..." />
+						<TextBox Grid.Column="1" Text="{Binding BugTitle}"
+								 Height="32" VerticalAlignment="Center"
+								 Watermark="Nhập tiêu đề bug tại đây..." />
+					</Grid>
+
+					<!-- Description Row -->
+					<TextBlock Grid.Row="2" Grid.Column="0" Classes="card-label" Text="MÔ TẢ BUG" Width="100" Margin="0,4,12,10" VerticalAlignment="Top" />
+					<TextBox Grid.Row="2" Grid.Column="1" Text="{Binding BugDescription}"
+							 AcceptsReturn="True" TextWrapping="Wrap" Height="120" Margin="0,0,0,10"
+							 VerticalAlignment="Top" VerticalContentAlignment="Top"
+							 Watermark="Mô tả chi tiết: bước tái hiện, kết quả mong đợi, kết quả thực tế..." />
+
+					<!-- Assignee Row -->
+					<TextBlock Grid.Row="3" Grid.Column="0" Classes="card-label" Text="ASSIGNEE" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
+					<ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Left"
+							  Height="32" FontSize="12" Padding="8,4" Width="200"
+							  BorderThickness="0" CornerRadius="0"
+							  Background="{DynamicResource SurfaceBrush}"
+							  ItemsSource="{Binding Memberships}"
+							  PlaceholderText="Chọn (Tất cả)"
+							  SelectedItem="{Binding SelectedMembership}" Margin="0,0,0,10">
+						<ComboBox.ItemTemplate>
+							<DataTemplate>
+								<TextBlock Text="{Binding User.Name}" />
+							</DataTemplate>
+						</ComboBox.ItemTemplate>
+					</ComboBox>
+
+					<Border Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
+							BorderBrush="{DynamicResource BorderBrush}"
+							BorderThickness="0,1,0,0"
+							Margin="0,2,0,10" />
+
 					<!-- Dynamic Custom Fields (3 items per row) -->
-					<ItemsControl Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding CustomFieldControls}" Margin="0,0,0,0">
+					<ItemsControl Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding CustomFieldControls}" Margin="0,0,0,0">
 						<ItemsControl.ItemsPanel>
 							<ItemsPanelTemplate>
-								<UniformGrid Columns="3" />
+								<UniformGrid Columns="3" ColumnSpacing="5" />
 							</ItemsPanelTemplate>
 						</ItemsControl.ItemsPanel>
 						<ItemsControl.ItemTemplate>
 							<DataTemplate x:DataType="models:CustomFieldControlViewModel">
-								<Grid ColumnDefinitions="150,*" Margin="5,5,0,0">
-									<TextBlock Grid.Column="0" Classes="card-label" Text="{Binding DisplayName}" 
-											   VerticalAlignment="Center" TextWrapping="Wrap" Width="150" Margin="5,0,12,0" />
+								<Grid ColumnDefinitions="Auto,*" Margin="0,5,0,0">
+									<TextBlock Grid.Column="0" Classes="card-label" 
+											   Text="{Binding DisplayName}" 
+											   VerticalAlignment="Center" 
+											   TextWrapping="Wrap" 
+											   Margin="0,0,12,0" />
 
 									<Panel Grid.Column="1">
 										<!-- List Template -->
