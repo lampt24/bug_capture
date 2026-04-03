@@ -38,6 +38,7 @@ namespace BugCapture
         private int _evidenceCounter = 1;
         private string _statusText = "Ready";
         private string _bugTitle = string.Empty;
+        private readonly string _appVersionText;
         private string _bugPrefix = string.Empty;
         private string _bugDescription = string.Empty;
         private string _assignee = string.Empty;
@@ -49,6 +50,7 @@ namespace BugCapture
         private string _currentDateTime = string.Empty;
         private System.Threading.Timer? _clockTimer;
         private readonly Logger _logger = new Logger();
+        private string _autoUpdateLogPath = string.Empty;
 
         // Redmine Integration
         private readonly RedmineService _redmineService;
@@ -102,8 +104,19 @@ namespace BugCapture
         public string BugTitle
         {
             get => _bugTitle;
-            set { _bugTitle = value; OnPropertyChanged(nameof(BugTitle)); }
+            set
+            {
+                _bugTitle = value;
+                OnPropertyChanged(nameof(BugTitle));
+                OnPropertyChanged(nameof(AppWindowTitle));
+            }
         }
+
+        public string AppWindowTitle => string.IsNullOrWhiteSpace(BugTitle)
+            ? $"BugCapture v{_appVersionText}"
+            : $"BugCapture v{_appVersionText} - {BugTitle}";
+
+        public string AppTitleBarText => $"BUGCAPTURE v{_appVersionText}";
 
         public string BugPrefix
         {
@@ -623,6 +636,7 @@ namespace BugCapture
         {
             InitializeComponent();
             _captureService = new ShareXCaptureService();
+            _appVersionText = GetCurrentAppVersion().ToString(3);
             // Setup logging to file in LocalAppData (safer)
             try
             {
@@ -630,10 +644,12 @@ namespace BugCapture
                 string logDir = System.IO.Path.Combine(appData, "BugCapture", "logs");
                 if (!System.IO.Directory.Exists(logDir)) System.IO.Directory.CreateDirectory(logDir);
                 string logPath = System.IO.Path.Combine(logDir, "bugcapture_ui.log");
+                _autoUpdateLogPath = System.IO.Path.Combine(logDir, "auto_update.log");
 
                 _logger = new Logger(logPath);
                 _logger.AsyncWrite = false;
                 _logger.WriteLine($"--- UI Initialized at {DateTime.Now} ---");
+                WriteAutoUpdateLog("Logger initialized.");
                 StatusText = $"Log: {logPath}";
             }
             catch (Exception ex)
@@ -699,22 +715,50 @@ namespace BugCapture
             return System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new System.Version(0, 0, 0, 0);
         }
 
+        private void WriteAutoUpdateLog(string message)
+        {
+            var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
+            _logger.WriteLine($"[AutoUpdate] {message}");
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(_autoUpdateLogPath))
+                {
+                    System.IO.File.AppendAllText(_autoUpdateLogPath, line + Environment.NewLine);
+                }
+            }
+            catch
+            {
+                // Avoid failing app flow because of logging problems.
+            }
+        }
+
         private async Task CheckAndRunAutoUpdateAsync()
         {
             try
             {
                 var settings = SettingsService.Load();
+                WriteAutoUpdateLog($"Check started | Enabled={settings.AutoUpdateEnabled} | FeedUrl='{settings.AutoUpdateFeedUrl}'");
+
                 if (!settings.AutoUpdateEnabled || string.IsNullOrWhiteSpace(settings.AutoUpdateFeedUrl))
                 {
+                    WriteAutoUpdateLog("Skip check: Auto update disabled or feed URL is empty.");
+                    StatusText = "Auto-update skipped (disabled or missing feed URL).";
                     return;
                 }
 
                 var currentVersion = GetCurrentAppVersion();
+                WriteAutoUpdateLog($"Current version: {currentVersion}");
                 var update = await _autoUpdateService.CheckForUpdateAsync(currentVersion, settings.AutoUpdateFeedUrl);
                 if (update == null)
                 {
+                    WriteAutoUpdateLog("No update available (feed version <= current version or invalid feed).");
+                    StatusText = $"Auto-update: no new version (current {currentVersion}).";
                     return;
                 }
+
+                WriteAutoUpdateLog($"Update found | Latest={update.LatestVersion} | Current={update.CurrentVersion} | Url={update.DownloadUrl}");
+                StatusText = $"Auto-update: found {update.LatestVersion} (current {update.CurrentVersion}).";
 
                 var prompt =
                     $"Đã có phiên bản mới: {update.LatestVersion} (hiện tại: {update.CurrentVersion})." + Environment.NewLine +
@@ -733,16 +777,22 @@ namespace BugCapture
 
                 if (userChoice != System.Windows.Forms.DialogResult.Yes)
                 {
+                    WriteAutoUpdateLog("User declined update prompt.");
+                    StatusText = "Auto-update: user skipped installation.";
                     return;
                 }
 
+                WriteAutoUpdateLog("User accepted update prompt. Starting download.");
                 StatusText = "Đang tải bản cập nhật...";
-                var installerPath = await _autoUpdateService.DownloadUpdateAsync(update);
-                _autoUpdateService.LaunchInstaller(installerPath);
+                var packagePath = await _autoUpdateService.DownloadUpdateAsync(update);
+                StatusText = "Đang áp dụng bản cập nhật...";
+                WriteAutoUpdateLog($"Download completed: {packagePath}. Applying update package.");
+                _autoUpdateService.LaunchUpdateAndRestart(packagePath);
                 Close();
             }
             catch (Exception ex)
             {
+                WriteAutoUpdateLog($"ERROR: {ex.Message}");
                 _logger.WriteException(ex, "Auto Update Error");
                 StatusText = $"Auto-update failed: {ex.Message}";
             }

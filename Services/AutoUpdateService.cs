@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Text;
 
 namespace BugCapture.Services
 {
@@ -116,6 +117,84 @@ namespace BugCapture.Services
       {
         FileName = installerPath,
         UseShellExecute = true
+      });
+    }
+
+    public void LaunchUpdateAndRestart(string packagePath)
+    {
+      if (string.IsNullOrWhiteSpace(packagePath))
+      {
+        throw new ArgumentException("Package path is required.", nameof(packagePath));
+      }
+
+      var extension = Path.GetExtension(packagePath);
+      if (!string.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase))
+      {
+        LaunchInstaller(packagePath);
+        return;
+      }
+
+      var currentProcess = Process.GetCurrentProcess();
+      var parentPid = currentProcess.Id;
+      var targetDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+      var exePath = Environment.ProcessPath;
+
+      if (string.IsNullOrWhiteSpace(exePath))
+      {
+        exePath = currentProcess.MainModule?.FileName;
+      }
+
+      if (string.IsNullOrWhiteSpace(exePath))
+      {
+        throw new InvalidOperationException("Cannot resolve current executable path for restart.");
+      }
+
+      var updatesFolder = Path.GetDirectoryName(packagePath) ?? Path.GetTempPath();
+      var scriptPath = Path.Combine(updatesFolder, $"apply-update-{Guid.NewGuid():N}.ps1");
+      File.WriteAllText(scriptPath, BuildUpdaterScript(), Encoding.UTF8);
+
+      var startInfo = new ProcessStartInfo
+      {
+        FileName = "powershell",
+        UseShellExecute = false,
+        CreateNoWindow = true,
+        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -ParentPid {parentPid} -ZipPath \"{packagePath}\" -TargetDir \"{targetDir}\" -ExePath \"{exePath}\""
+      };
+
+      Process.Start(startInfo);
+    }
+
+    private static string BuildUpdaterScript()
+    {
+      return string.Join(Environment.NewLine, new[]
+      {
+        "param(",
+        "  [int]$ParentPid,",
+        "  [string]$ZipPath,",
+        "  [string]$TargetDir,",
+        "  [string]$ExePath",
+        ")",
+        "",
+        "$ErrorActionPreference = 'Stop'",
+        "",
+        "for ($i = 0; $i -lt 240; $i++) {",
+        "  if (-not (Get-Process -Id $ParentPid -ErrorAction SilentlyContinue)) {",
+        "    break",
+        "  }",
+        "",
+        "  Start-Sleep -Milliseconds 500",
+        "}",
+        "",
+        "$extractDir = Join-Path ([IO.Path]::GetDirectoryName($ZipPath)) ('extract_' + [Guid]::NewGuid().ToString('N'))",
+        "Expand-Archive -Path $ZipPath -DestinationPath $extractDir -Force",
+        "",
+        "$null = robocopy $extractDir $TargetDir /E /R:2 /W:1 /NFL /NDL /NJH /NJS /NP",
+        "",
+        "Start-Process -FilePath $ExePath -WorkingDirectory $TargetDir",
+        "",
+        "Remove-Item -Path $extractDir -Recurse -Force -ErrorAction SilentlyContinue",
+        "Remove-Item -Path $ZipPath -Force -ErrorAction SilentlyContinue",
+        "Remove-Item -Path $PSCommandPath -Force -ErrorAction SilentlyContinue"
       });
     }
 
