@@ -83,8 +83,10 @@ namespace BugCapture
         private ObservableCollection<MattermostUserInfo> _mattermostUsers = new();
         private bool _sendToMattermostChannels;
         private bool _mentionMattermostUsers;
+        private bool _replyToMattermostThreadId;
         private string _mattermostChannelTargetsText = string.Empty;
         private string _mattermostMentionText = string.Empty;
+        private string _mattermostThreadId = string.Empty;
         private ObservableCollection<string> _mattermostMentionSuggestions = new();
         private bool _isRefreshingMentionSuggestions;
         private bool _isApplyingMentionSuggestion;
@@ -417,6 +419,12 @@ namespace BugCapture
                     OnPropertyChanged(nameof(IsMattermostMentionSuggestionVisible));
                 }
 
+                if (value && _replyToMattermostThreadId)
+                {
+                    _replyToMattermostThreadId = false;
+                    OnPropertyChanged(nameof(ReplyToMattermostThreadId));
+                }
+
                 SaveMattermostSelections();
             }
         }
@@ -441,12 +449,53 @@ namespace BugCapture
                         _sendToMattermostChannels = false;
                         OnPropertyChanged(nameof(SendToMattermostChannels));
                     }
+
+                    if (_replyToMattermostThreadId)
+                    {
+                        _replyToMattermostThreadId = false;
+                        OnPropertyChanged(nameof(ReplyToMattermostThreadId));
+                    }
+
                     RefreshMattermostMentionSuggestions();
                 }
                 else
                 {
                     MattermostMentionSuggestions.Clear();
                     OnPropertyChanged(nameof(IsMattermostMentionSuggestionVisible));
+                }
+
+                SaveMattermostSelections();
+            }
+        }
+
+        public bool ReplyToMattermostThreadId
+        {
+            get => _replyToMattermostThreadId;
+            set
+            {
+                if (_replyToMattermostThreadId == value)
+                {
+                    return;
+                }
+
+                _replyToMattermostThreadId = value;
+                OnPropertyChanged(nameof(ReplyToMattermostThreadId));
+
+                if (_replyToMattermostThreadId)
+                {
+                    if (_sendToMattermostChannels)
+                    {
+                        _sendToMattermostChannels = false;
+                        OnPropertyChanged(nameof(SendToMattermostChannels));
+                    }
+
+                    if (_mentionMattermostUsers)
+                    {
+                        _mentionMattermostUsers = false;
+                        OnPropertyChanged(nameof(MentionMattermostUsers));
+                        MattermostMentionSuggestions.Clear();
+                        OnPropertyChanged(nameof(IsMattermostMentionSuggestionVisible));
+                    }
                 }
 
                 SaveMattermostSelections();
@@ -487,6 +536,22 @@ namespace BugCapture
                     RefreshMattermostMentionSuggestions();
                 }
 
+                SaveMattermostSelections();
+            }
+        }
+
+        public string MattermostThreadId
+        {
+            get => _mattermostThreadId;
+            set
+            {
+                if (string.Equals(_mattermostThreadId, value, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _mattermostThreadId = value;
+                OnPropertyChanged(nameof(MattermostThreadId));
                 SaveMattermostSelections();
             }
         }
@@ -721,6 +786,7 @@ namespace BugCapture
                 MattermostUsers = new ObservableCollection<MattermostUserInfo>();
                 SendToMattermostChannels = false;
                 MentionMattermostUsers = false;
+                ReplyToMattermostThreadId = false;
                 return;
             }
 
@@ -760,6 +826,7 @@ namespace BugCapture
                 MattermostUsers = new ObservableCollection<MattermostUserInfo>();
                 SendToMattermostChannels = false;
                 MentionMattermostUsers = false;
+                ReplyToMattermostThreadId = false;
                 StatusText = $"Mattermost load failed: {ex.Message}";
                 _logger.WriteException(ex, "Mattermost Load Error");
             }
@@ -921,8 +988,10 @@ namespace BugCapture
             var settings = SettingsService.Load();
             settings.MattermostSendToChannels = SendToMattermostChannels;
             settings.MattermostMentionUsers = MentionMattermostUsers;
+            settings.MattermostReplyToThreadId = ReplyToMattermostThreadId;
             settings.MattermostSelectedChannelReference = MattermostChannelTargetsText ?? string.Empty;
             settings.MattermostMentionText = MattermostMentionText ?? string.Empty;
+            settings.MattermostThreadId = MattermostThreadId ?? string.Empty;
             SettingsService.Save(settings);
         }
 
@@ -934,6 +1003,7 @@ namespace BugCapture
             try
             {
                 MattermostMentionText = settings.MattermostMentionText ?? string.Empty;
+                MattermostThreadId = settings.MattermostThreadId ?? string.Empty;
 
                 var savedReference = settings.MattermostSelectedChannelReference?.Trim() ?? string.Empty;
                 if (!string.IsNullOrWhiteSpace(savedReference))
@@ -956,7 +1026,11 @@ namespace BugCapture
                     }
                 }
 
-                if (settings.MattermostMentionUsers)
+                if (settings.MattermostReplyToThreadId)
+                {
+                    ReplyToMattermostThreadId = true;
+                }
+                else if (settings.MattermostMentionUsers)
                 {
                     MentionMattermostUsers = true;
                 }
@@ -1076,6 +1150,23 @@ namespace BugCapture
             return MattermostUsers
                 .Where(u => handles.Contains(u.Username))
                 .ToList();
+        }
+
+        private static string ExtractMattermostPostIdFromInput(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return string.Empty;
+            }
+
+            var trimmed = input.Trim();
+            var match = Regex.Match(trimmed, @"([a-z0-9]{26})(?!.*[a-z0-9]{26})", RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                return match.Groups[1].Value;
+            }
+
+            return trimmed;
         }
 
         private string BuildMentionHandle(string? source)
@@ -1502,13 +1593,15 @@ namespace BugCapture
             var selectedChannel = SelectedMattermostChannelTreeItem?.Channel;
             var shouldSendChannels = SendToMattermostChannels && selectedChannel != null;
             var shouldSendUsers = MentionMattermostUsers && !string.IsNullOrWhiteSpace(MattermostMentionText);
-            if (!shouldSendChannels && !shouldSendUsers)
+            var threadId = ExtractMattermostPostIdFromInput(MattermostThreadId);
+            var shouldReplyThread = ReplyToMattermostThreadId && !string.IsNullOrWhiteSpace(threadId);
+            if (!shouldSendChannels && !shouldSendUsers && !shouldReplyThread)
             {
-                _logger.WriteLine("[Mattermost] Skip send: no channel selected and no mention users.");
+                _logger.WriteLine("[Mattermost] Skip send: no channel selected, no mention users, and no thread id.");
                 return;
             }
 
-            _logger.WriteLine($"[Mattermost] Begin send | Ready={IsMattermostReady} | Server={MattermostServerUrl} | IssueId={issueId} | Attachments={attachmentFilePaths.Count} | SendChannels={shouldSendChannels} | SendUsers={shouldSendUsers}");
+            _logger.WriteLine($"[Mattermost] Begin send | Ready={IsMattermostReady} | Server={MattermostServerUrl} | IssueId={issueId} | Attachments={attachmentFilePaths.Count} | SendChannels={shouldSendChannels} | SendUsers={shouldSendUsers} | SendThread={shouldReplyThread}");
             if (selectedChannel != null)
             {
                 _logger.WriteLine($"[Mattermost] Selected channel | Team={selectedChannel.TeamDisplayName} ({selectedChannel.TeamName}) | Name={selectedChannel.Name} | ChannelId={selectedChannel.Id}");
@@ -1554,6 +1647,7 @@ namespace BugCapture
 
             int channelSent = 0;
             int userSent = 0;
+            int threadSent = 0;
 
             if (shouldSendChannels)
             {
@@ -1574,10 +1668,17 @@ namespace BugCapture
                 }
             }
 
-            _logger.WriteLine($"[Mattermost] Send result | Channels={channelSent} | Users={userSent}");
-            if (channelSent > 0 || userSent > 0)
+            if (shouldReplyThread)
             {
-                StatusText = $"Issue created. Mattermost sent to {channelSent} channel(s), {userSent} user(s).";
+                _logger.WriteLine($"[Mattermost] Thread input='{MattermostThreadId}' | Resolved postId='{threadId}'");
+                await _mattermostService.SendToThreadAsync(threadId, message, attachmentFilePaths, interactiveOptions);
+                threadSent = 1;
+            }
+
+            _logger.WriteLine($"[Mattermost] Send result | Channels={channelSent} | Users={userSent} | Threads={threadSent}");
+            if (channelSent > 0 || userSent > 0 || threadSent > 0)
+            {
+                StatusText = $"Issue created. Mattermost sent to {channelSent} channel(s), {userSent} user(s), {threadSent} thread(s).";
             }
         }
 

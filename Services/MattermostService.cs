@@ -24,6 +24,7 @@ namespace BugCapture.Services
       public string RedmineUrl { get; set; } = string.Empty;
       public string IntegrationUrl { get; set; } = string.Empty;
       public int IssueId { get; set; }
+      public string ThreadRootId { get; set; } = string.Empty;
     }
 
     private readonly HttpClient _httpClient = new HttpClient();
@@ -147,6 +148,29 @@ namespace BugCapture.Services
       return sentCount;
     }
 
+    public async Task SendToThreadAsync(
+      string postOrThreadId,
+      string message,
+      IEnumerable<string> filePaths,
+      MattermostInteractivePostOptions? interactiveOptions = null)
+    {
+      EnsureConfigured();
+
+      var post = await GetPostAsync(postOrThreadId);
+      var channelId = post.ChannelId;
+      var threadRootId = string.IsNullOrWhiteSpace(post.RootId) ? post.Id : post.RootId;
+      if (string.IsNullOrWhiteSpace(channelId) || string.IsNullOrWhiteSpace(threadRootId))
+      {
+        throw new InvalidOperationException("Cannot resolve channel/thread from Mattermost post id.");
+      }
+
+      var options = interactiveOptions ?? new MattermostInteractivePostOptions();
+      options.ThreadRootId = threadRootId;
+
+      var fileIds = await UploadFilesToChannelAsync(channelId, filePaths);
+      await CreatePostAsync(channelId, message, fileIds, options);
+    }
+
     public async Task<string> GetCurrentUserMentionAsync()
     {
       await EnsureCurrentUserIdAsync();
@@ -183,6 +207,18 @@ namespace BugCapture.Services
       using var response = await _httpClient.GetAsync(BuildApiUrl("/api/v4/users/me"));
       await EnsureSuccessAsync(response);
       return await DeserializeAsync<MattermostUserDto>(response);
+    }
+
+    private async Task<MattermostPostDto> GetPostAsync(string postId)
+    {
+      if (string.IsNullOrWhiteSpace(postId))
+      {
+        throw new ArgumentException("Post id is required.", nameof(postId));
+      }
+
+      using var response = await _httpClient.GetAsync(BuildApiUrl($"/api/v4/posts/{postId.Trim()}"));
+      await EnsureSuccessAsync(response);
+      return await DeserializeAsync<MattermostPostDto>(response);
     }
 
     private async Task<List<MattermostTeamDto>> GetMyTeamsAsync()
@@ -278,7 +314,8 @@ namespace BugCapture.Services
         ChannelId = channelId,
         Message = interactiveOptions == null ? message : string.Empty,
         FileIds = fileIds,
-        Props = BuildInteractiveProps(interactiveOptions)
+        Props = BuildInteractiveProps(interactiveOptions),
+        RootId = string.IsNullOrWhiteSpace(interactiveOptions?.ThreadRootId) ? null : interactiveOptions!.ThreadRootId
       };
 
       var payload = JsonSerializer.Serialize(payloadObj);
@@ -432,6 +469,21 @@ namespace BugCapture.Services
       [JsonPropertyName("props")]
       [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
       public MattermostPostPropsDto? Props { get; set; }
+
+      [JsonPropertyName("root_id")]
+      [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+      public string? RootId { get; set; }
+    }
+
+    private class MattermostPostDto
+    {
+      public string Id { get; set; } = string.Empty;
+
+      [JsonPropertyName("channel_id")]
+      public string ChannelId { get; set; } = string.Empty;
+
+      [JsonPropertyName("root_id")]
+      public string? RootId { get; set; }
     }
 
     private class MattermostPostPropsDto

@@ -10,8 +10,10 @@ namespace BugCapture.Models
         public string MattermostAccessToken { get; set; } = string.Empty;
         public bool MattermostSendToChannels { get; set; } = true;
         public bool MattermostMentionUsers { get; set; }
+        public bool MattermostReplyToThreadId { get; set; }
         public string MattermostSelectedChannelReference { get; set; } = string.Empty;
         public string MattermostMentionText { get; set; } = string.Empty;
+        public string MattermostThreadId { get; set; } = string.Empty;
         public bool IsDarkMode { get; set; } = true;
 
         // Last selections
