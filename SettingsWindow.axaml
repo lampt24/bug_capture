@@ -82,7 +82,7 @@
 
             <StackPanel>
                 <TextBlock Text="UPDATE FEED URL" Classes="label" />
-                <TextBox Name="AutoUpdateFeedUrlTextBox" Watermark="https://your-domain.com/bugcapture/update-feed.json" />
+                <TextBox Name="AutoUpdateFeedUrlTextBox" Watermark="https://raw.githubusercontent.com/lampt24/bug_capture/bug_capture/update-feed.json" />
             </StackPanel>
         </StackPanel>
 

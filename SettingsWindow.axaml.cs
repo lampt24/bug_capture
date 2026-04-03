@@ -30,6 +30,10 @@ namespace BugCapture
             if (cancelBtn != null) cancelBtn.Click += OnCancelClick;
 
             CurrentSettings = SettingsService.Load();
+            if (string.IsNullOrWhiteSpace(CurrentSettings.AutoUpdateFeedUrl))
+            {
+                CurrentSettings.AutoUpdateFeedUrl = AppSettings.DefaultAutoUpdateFeedUrl;
+            }
             if (urlBox != null) urlBox.Text = CurrentSettings.RedmineUrl;
             if (keyBox != null) keyBox.Text = CurrentSettings.RedmineApiKey;
             if (mattermostUrlBox != null) mattermostUrlBox.Text = CurrentSettings.MattermostServerUrl;
@@ -62,7 +66,10 @@ namespace BugCapture
             CurrentSettings.MattermostServerUrl = mattermostUrlBox?.Text?.Trim() ?? string.Empty;
             CurrentSettings.MattermostAccessToken = mattermostTokenBox?.Text?.Trim() ?? string.Empty;
             CurrentSettings.AutoUpdateEnabled = autoUpdateEnabledCheckBox?.IsChecked ?? true;
-            CurrentSettings.AutoUpdateFeedUrl = autoUpdateFeedUrlTextBox?.Text?.Trim() ?? string.Empty;
+            var autoUpdateFeedUrl = autoUpdateFeedUrlTextBox?.Text?.Trim() ?? string.Empty;
+            CurrentSettings.AutoUpdateFeedUrl = string.IsNullOrWhiteSpace(autoUpdateFeedUrl)
+                ? AppSettings.DefaultAutoUpdateFeedUrl
+                : autoUpdateFeedUrl;
             SettingsService.Save(CurrentSettings);
             IsSaved = true;
             Close();
