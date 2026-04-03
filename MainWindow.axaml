@@ -39,14 +39,14 @@
 		<Style Selector="TextBlock.field-label">
 			<Setter Property="FontSize"     Value="10" />
 			<Setter Property="FontWeight"   Value="SemiBold" />
-			<Setter Property="Foreground"   Value="#5A7AAB" />
+			<Setter Property="Foreground"   Value="{DynamicResource MutedBrush}" />
 			<Setter Property="Margin"       Value="0,0,0,5" />
 			<Setter Property="LetterSpacing" Value="1" />
 		</Style>
 
 		<!-- ── TextBox dark style ── -->
 		<Style Selector="TextBox">
-			<Setter Property="Background"   Value="{DynamicResource BgBrush}" />
+			<Setter Property="Background"   Value="{DynamicResource SurfaceBrush}" />
 			<Setter Property="BorderBrush"  Value="{DynamicResource BorderBrush}" />
 			<Setter Property="Foreground"   Value="{DynamicResource TextBrush}" />
 			<Setter Property="CaretBrush"   Value="{DynamicResource AccentBrush}" />
@@ -173,7 +173,7 @@
 		<!-- ── Window Border Highlight ── -->
 		<Style Selector="Window[IsActive=True] Border#MainWindowBorder">
 			<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-			<Setter Property="BoxShadow" Value="0 0 15 2 #4FD1C5" />
+			<Setter Property="BoxShadow" Value="0 0 15 2 #4C8DFF" />
 		</Style>
 		<Style Selector="Window[IsActive=False] Border#MainWindowBorder">
 			<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
@@ -367,7 +367,8 @@
 									<TextBlock Grid.Column="0" Classes="card-label" 
 											   Text="{Binding DisplayName}" 
 											   VerticalAlignment="Center" 
-											   TextWrapping="Wrap" 
+											   TextWrapping="Wrap"
+												 MinWidth="100"
 											   Margin="0,0,12,0" />
 
 									<Panel Grid.Column="1">
@@ -424,7 +425,7 @@
 						<Grid ColumnDefinitions="100,*" ColumnSpacing="12">
 							<TextBlock Grid.Column="0" Classes="card-label" Text="MATTERMOST" Width="100" VerticalAlignment="Top" Margin="0,8,0,0" />
 							<Grid Grid.Column="1" ColumnDefinitions="Auto,2*,Auto,2*,Auto,2*" RowDefinitions="Auto" ColumnSpacing="10" RowSpacing="6">
-								<RadioButton Grid.Row="0" Grid.Column="0" Content="GỬI CHANNEL"
+								<RadioButton Grid.Row="0" Grid.Column="0" Content="TO CHANNEL"
 											 IsChecked="{Binding SendToMattermostChannels}"
 											 IsEnabled="{Binding IsMattermostReady}"
 											 GroupName="MattermostSendMode"
@@ -447,7 +448,7 @@
 									</ComboBox.ItemTemplate>
 								</ComboBox>
 
-								<RadioButton Grid.Row="0" Grid.Column="2" Content="THREAD ID"
+								<RadioButton Grid.Row="0" Grid.Column="2" Content="TO THREAD"
 										 IsChecked="{Binding ReplyToMattermostThreadId}"
 											 IsEnabled="{Binding IsMattermostReady}"
 											 GroupName="MattermostSendMode"
@@ -461,7 +462,7 @@
 										 FontSize="11"
 										 Watermark="Nhập post id hoặc link thread Mattermost" />
 
-								<RadioButton Grid.Row="0" Grid.Column="4" Content="@ USER"
+								<RadioButton Grid.Row="0" Grid.Column="4" Content="TO USER"
 										 IsChecked="{Binding MentionMattermostUsers}"
 										 IsEnabled="{Binding IsMattermostReady}"
 										 GroupName="MattermostSendMode"
@@ -519,7 +520,7 @@
 									Click="OnSubmitToRedmineClick"
 									Height="42"
 									VerticalContentAlignment="Center"
-									Background="{DynamicResource AccentBrush}" Foreground="Black" BorderThickness="0">
+									Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0">
 							</Button>
 						</StackPanel>
 					</Grid>
