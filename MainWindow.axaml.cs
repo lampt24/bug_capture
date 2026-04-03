@@ -45,12 +45,9 @@ namespace BugCapture
         private string _whoMiss = string.Empty;
         private string _moduleId = string.Empty;
         private CapturedImage? _currentlyEditingImage;
-        private bool _isEditorVisible = true;
-        private double _expandedHeight = 850;
+        private bool _isEditorVisible = false;
         private string _currentDateTime = string.Empty;
         private System.Threading.Timer? _clockTimer;
-        private bool _isSynchronizingEditors;
-        private EditorView? _lastInteractedEditor;
         private readonly Logger _logger = new Logger();
 
         // Redmine Integration
@@ -161,24 +158,6 @@ namespace BugCapture
 
                 _isEditorVisible = value;
                 OnPropertyChanged(nameof(IsEditorVisible));
-
-                if (value)
-                {
-                    // Restore expanded height
-                    SizeToContent = Avalonia.Controls.SizeToContent.Manual;
-                    Height = _expandedHeight;
-                }
-                else
-                {
-                    // Save current height before collapsing
-                    _expandedHeight = Height;
-                    // Let Avalonia auto-calculate compact height, then lock to Manual
-                    SizeToContent = Avalonia.Controls.SizeToContent.Height;
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                    {
-                        SizeToContent = Avalonia.Controls.SizeToContent.Manual;
-                    }, Avalonia.Threading.DispatcherPriority.Render);
-                }
             }
         }
 
@@ -666,7 +645,6 @@ namespace BugCapture
             // Subscribe to editor events
             EditorViewModel.SaveRequested += OnEditorSaveRequested;
             EditorViewModel.CopyRequested += OnEditorCopyRequested;
-            EditorViewModel.PropertyChanged += OnEditorViewModelPropertyChanged;
 
             // Start live clock
             UpdateClock(null);
@@ -1684,28 +1662,7 @@ namespace BugCapture
 
         private EditorView? GetActiveEditorView()
         {
-            if (_lastInteractedEditor != null)
-            {
-                return _lastInteractedEditor;
-            }
-
-            if (EditorViewModel.IsEditorMaximized)
-            {
-                return FullscreenEditorViewControl;
-            }
-
-            return EditorViewControl;
-        }
-
-        private EditorView? GetInactiveEditorView()
-        {
-            var activeEditor = GetActiveEditorView();
-            if (ReferenceEquals(activeEditor, EditorViewControl))
-            {
-                return FullscreenEditorViewControl;
-            }
-
-            return EditorViewControl;
+            return FullscreenEditorViewControl;
         }
 
         private void UpdateThumbnailFromSnapshot(SkiaSharp.SKBitmap snapshot)
@@ -1731,54 +1688,6 @@ namespace BugCapture
                     ms.Position = 0;
                     _currentlyEditingImage.Thumbnail = new Avalonia.Media.Imaging.Bitmap(ms);
                 }
-            }
-        }
-
-        private void SyncEditors(bool updateThumbnail)
-        {
-            if (_isSynchronizingEditors || _currentlyEditingImage == null)
-            {
-                return;
-            }
-
-            var activeEditorView = GetActiveEditorView();
-            var inactiveEditorView = GetInactiveEditorView();
-            if (activeEditorView == null || inactiveEditorView == null)
-            {
-                return;
-            }
-
-            try
-            {
-                _isSynchronizingEditors = true;
-                using (var snapshot = activeEditorView.GetSnapshot())
-                {
-                    if (snapshot == null)
-                    {
-                        return;
-                    }
-
-                    inactiveEditorView.LoadSnapshot(snapshot);
-                    if (updateThumbnail)
-                    {
-                        UpdateThumbnailFromSnapshot(snapshot);
-                    }
-                }
-            }
-            finally
-            {
-                _isSynchronizingEditors = false;
-            }
-        }
-
-        private void OnEditorViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(EditorViewModel.IsEditorMaximized))
-            {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    SyncEditors(updateThumbnail: true);
-                }, Avalonia.Threading.DispatcherPriority.Background);
             }
         }
 
@@ -1808,12 +1717,6 @@ namespace BugCapture
                         {
                             stream.SetLength(0); // Clear existing content
                             data.SaveTo(stream);
-                        }
-
-                        var inactiveEditorView = GetInactiveEditorView();
-                        if (inactiveEditorView != null)
-                        {
-                            inactiveEditorView.LoadSnapshot(snapshot);
                         }
 
                         UpdateThumbnailFromSnapshot(snapshot);
@@ -2073,9 +1976,9 @@ namespace BugCapture
             }
         }
 
-        public void OnToggleEditorVisibleClick(object sender, RoutedEventArgs e)
+        public void OnCloseFullscreenEditorClick(object sender, RoutedEventArgs e)
         {
-            IsEditorVisible = !IsEditorVisible;
+            IsEditorVisible = false;
         }
 
         public void OnDeleteImageClick(object sender, RoutedEventArgs e)
@@ -2315,10 +2218,7 @@ namespace BugCapture
 
         public void OnEditorPointerPressed(object? sender, PointerPressedEventArgs e)
         {
-            if (sender is EditorView view)
-            {
-                _lastInteractedEditor = view;
-            }
+            // Fullscreen editor only.
         }
 
         private void OnThumbnailClickInternal(CapturedImage image, bool forceShowEditor = true)
@@ -2328,6 +2228,10 @@ namespace BugCapture
             // Re-clicking the same opened image should be a no-op.
             if (ReferenceEquals(_currentlyEditingImage, image) && image.IsImage)
             {
+                if (!IsEditorVisible)
+                {
+                    IsEditorVisible = true;
+                }
                 return;
             }
 
@@ -2365,12 +2269,7 @@ namespace BugCapture
                 return;
             }
 
-            // Show editor when explicitly requested, or when editor is currently hidden
-            // (e.g. it was hidden after selecting a non-image attachment).
-            if (forceShowEditor || !IsEditorVisible)
-            {
-                IsEditorVisible = true;
-            }
+            IsEditorVisible = true;
 
             _currentlyEditingImage = image;
             StatusText = $"Editing {image.CaptureType}...";
@@ -2391,7 +2290,6 @@ namespace BugCapture
                         EditorViewModel.LastSavedPath = image.FilePath;
                         EditorViewModel.ImageFilePath = image.FilePath;
                         EditorViewModel.ImageDimensions = $"{bitmap.Size.Width} x {bitmap.Size.Height}";
-                        _lastInteractedEditor = EditorViewControl;
 
                         // Reset dirty flag after all internal load-time events (HistoryChanged, etc.) have processed.
                         // Those events often run at Normal priority, so we use Background priority to ensure this is the final word.
@@ -2473,7 +2371,6 @@ namespace BugCapture
         protected override void OnClosed(EventArgs e)
         {
             SaveSelections(force: true);
-            EditorViewModel.PropertyChanged -= OnEditorViewModelPropertyChanged;
             base.OnClosed(e);
         }
     }

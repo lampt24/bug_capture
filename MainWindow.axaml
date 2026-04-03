@@ -7,7 +7,7 @@
         x:DataType="local:MainWindow"
         Title="{Binding BugTitle, StringFormat='{}BugCapture - {0}', FallbackValue='BugCapture'}"
         Icon="/Assets/app_icon.png"
-        Width="1300" Height="860"
+        Width="1300" Height="592"
         WindowStartupLocation="CenterScreen"
         SystemDecorations="Full"
         ExtendClientAreaToDecorationsHint="True"
@@ -306,14 +306,13 @@
 								  Background="{DynamicResource SurfaceBrush}"
 								  ItemsSource="{Binding Trackers}"
 								  IsEnabled="{Binding IsTrackerSelectionEnabled}"
-								  SelectedItem="{Binding SelectedTracker}" Margin="0,0,12,0">
+								  SelectedItem="{Binding SelectedTracker}" Margin="0,0,0,0">
 							<ComboBox.ItemTemplate>
 								<DataTemplate>
 									<TextBlock Text="{Binding Name}" />
 								</DataTemplate>
 							</ComboBox.ItemTemplate>
 						</ComboBox>
-
 					</Grid>
 
 					<!-- Title Row -->
@@ -511,12 +510,6 @@
 									<TextBlock Text="SCROLL CAPTURE" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
 								</StackPanel>
 							</Button>
-							<Button Classes="dash-btn" Click="OnToggleEditorVisibleClick" Height="42" Padding="12,6,12,6">
-								<StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="4">
-									<PathIcon Data="{StaticResource Icon.Edit}" Width="18" Height="18" HorizontalAlignment="Center" Margin="0,0,0,2" Foreground="{DynamicResource AccentBrush}"/>
-									<TextBlock Text="IMAGE EDITOR" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
-								</StackPanel>
-							</Button>
 						</StackPanel>
 
 						<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
@@ -585,16 +578,6 @@
 						</ScrollViewer>
 					</Border>
 
-					<!-- Bottom: Image Editor -->
-					<Border Grid.Row="3" Classes="dash-card" Padding="0" ClipToBounds="True"
-							BorderThickness="1"
-							IsVisible="{Binding IsEditorVisible}">
-						<editor:EditorView x:Name="EditorViewControl"
-										   DataContext="{Binding EditorViewModel}"
-										   PointerPressed="OnEditorPointerPressed"
-										   HorizontalAlignment="Stretch"
-										   VerticalAlignment="Stretch" />
-					</Border>
 				</Grid>
 			</Grid>
 
@@ -632,7 +615,7 @@
 
 			<!-- ══════════════ FULLSCREEN EDITOR OVERLAY ══════════════ -->
 			<Grid Grid.Row="0" Grid.RowSpan="3"
-				  IsVisible="{Binding EditorViewModel.IsEditorMaximized}"
+				  IsVisible="{Binding IsEditorVisible}"
 				  Background="{DynamicResource BgBrush}"
 				  ZIndex="1000">
 				<editor:EditorView x:Name="FullscreenEditorViewControl"
@@ -642,7 +625,7 @@
 								   VerticalAlignment="Stretch" />
 
 				<!-- Quick exit button for full screen -->
-				<Button Command="{Binding EditorViewModel.ToggleEditorMaximizedCommand}"
+				<Button Click="OnCloseFullscreenEditorClick"
 						VerticalAlignment="Top" HorizontalAlignment="Right"
 						Classes="wnd-btn" Width="40" Height="40" Margin="10">
 					<PathIcon Data="{StaticResource Icon.Close}" Width="14" Height="14" Foreground="{DynamicResource MutedBrush}"/>
