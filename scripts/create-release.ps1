@@ -1,5 +1,4 @@
 param(
-  [Parameter(Mandatory = $true)]
   [string]$Version,
 
   [Parameter(Mandatory = $true)]
@@ -11,6 +10,8 @@ param(
   [string]$ReleaseName,
   [string]$ReleaseNotes = "",
   [string]$GitHubToken,
+  [ValidateSet("patch", "minor", "major")]
+  [string]$Bump = "patch",
   [switch]$SelfContained,
   [switch]$SkipTag,
   [switch]$SkipPushTag,
@@ -54,6 +55,98 @@ function Ensure-Version {
   }
 
   return $parsed.ToString()
+}
+
+function Read-ProjectVersion {
+  param([string]$ProjectFilePath)
+
+  if (-not (Test-Path $ProjectFilePath)) {
+    return $null
+  }
+
+  try {
+    [xml]$xml = Get-Content -Path $ProjectFilePath -Raw
+    $versionNode = $xml.Project.PropertyGroup.Version | Select-Object -First 1
+    if (-not $versionNode) {
+      return $null
+    }
+
+    $normalized = Ensure-Version -InputVersion $versionNode
+    return [System.Version]::Parse($normalized)
+  }
+  catch {
+    return $null
+  }
+}
+
+function Get-LatestTaggedVersion {
+  $tags = git tag --list "v*"
+  if (-not $tags) {
+    return $null
+  }
+
+  $versions = New-Object System.Collections.Generic.List[System.Version]
+  foreach ($tagValue in $tags) {
+    if ([string]::IsNullOrWhiteSpace($tagValue)) {
+      continue
+    }
+
+    $trimmed = $tagValue.Trim()
+    if ($trimmed.StartsWith("v", [System.StringComparison]::OrdinalIgnoreCase)) {
+      $trimmed = $trimmed.Substring(1)
+    }
+
+    $parsed = $null
+    if ([System.Version]::TryParse($trimmed, [ref]$parsed) -and $parsed -ne $null) {
+      [void]$versions.Add($parsed)
+    }
+  }
+
+  if ($versions.Count -eq 0) {
+    return $null
+  }
+
+  return ($versions | Sort-Object -Descending | Select-Object -First 1)
+}
+
+function Get-AutoVersion {
+  param(
+    [string]$ResolvedProjectPath,
+    [string]$BumpKind
+  )
+
+  $latestTagVersion = Get-LatestTaggedVersion
+  $projectVersion = Read-ProjectVersion -ProjectFilePath $ResolvedProjectPath
+
+  $baseVersion = $latestTagVersion
+  if ($projectVersion -and (($baseVersion -eq $null) -or ($projectVersion -gt $baseVersion))) {
+    $baseVersion = $projectVersion
+  }
+
+  if ($baseVersion -eq $null) {
+    $baseVersion = [System.Version]::Parse("0.1.0")
+  }
+
+  $major = $baseVersion.Major
+  $minor = $baseVersion.Minor
+  $build = if ($baseVersion.Build -ge 0) { $baseVersion.Build } else { 0 }
+
+  switch ($BumpKind) {
+    "major" {
+      $major += 1
+      $minor = 0
+      $build = 0
+    }
+    "minor" {
+      $minor += 1
+      $build = 0
+    }
+    default {
+      $build += 1
+    }
+  }
+
+  return "$major.$minor.$build"
 }
 
 function Ensure-RepoFormat {
@@ -104,18 +197,54 @@ function Get-RepoRelativePath {
   return $relative.Replace("\\", "/")
 }
 
-$normalizedVersion = Ensure-Version -InputVersion $Version
-Ensure-RepoFormat -RepoValue $Repo
+function Set-ProjectVersion {
+  param(
+    [string]$ProjectFilePath,
+    [string]$VersionValue
+  )
 
-$tag = "v$normalizedVersion"
-if ([string]::IsNullOrWhiteSpace($ReleaseName)) {
-  $ReleaseName = $tag
+  [xml]$xml = Get-Content -Path $ProjectFilePath -Raw
+  if (-not $xml.Project) {
+    throw "Invalid project file: $ProjectFilePath"
+  }
+
+  $propertyGroup = $xml.Project.PropertyGroup | Select-Object -First 1
+  if (-not $propertyGroup) {
+    $propertyGroup = $xml.CreateElement("PropertyGroup")
+    [void]$xml.Project.AppendChild($propertyGroup)
+  }
+
+  function Set-OrCreateNode {
+    param(
+      [System.Xml.XmlElement]$Parent,
+      [string]$Name,
+      [string]$Value
+    )
+
+    $node = $Parent.SelectSingleNode($Name)
+    if (-not $node) {
+      $node = $xml.CreateElement($Name)
+      [void]$Parent.AppendChild($node)
+    }
+
+    $node.InnerText = $Value
+  }
+
+  $assemblyVersion = "$VersionValue.0"
+  Set-OrCreateNode -Parent $propertyGroup -Name "Version" -Value $VersionValue
+  Set-OrCreateNode -Parent $propertyGroup -Name "AssemblyVersion" -Value $assemblyVersion
+  Set-OrCreateNode -Parent $propertyGroup -Name "FileVersion" -Value $assemblyVersion
+  Set-OrCreateNode -Parent $propertyGroup -Name "InformationalVersion" -Value $VersionValue
+
+  $xml.Save($ProjectFilePath)
 }
 
 $token = Resolve-Token -InputToken $GitHubToken
 if ([string]::IsNullOrWhiteSpace($token)) {
   throw "GitHub token is missing. Set -GitHubToken or env GITHUB_TOKEN/GH_TOKEN."
 }
+
+Ensure-RepoFormat -RepoValue $Repo
 
 $repoRoot = (& git rev-parse --show-toplevel 2>$null)
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($repoRoot)) {
@@ -127,12 +256,25 @@ $resolvedProjectPath = Resolve-RepoRelativePath -RepoRoot $repoRoot -InputPath $
 $resolvedFeedPath = Resolve-RepoRelativePath -RepoRoot $repoRoot -InputPath $FeedPath
 $feedGitPath = Get-RepoRelativePath -RepoRoot $repoRoot -AbsolutePath $resolvedFeedPath
 
-Push-Location $repoRoot
-try {
 if (-not (Test-Path $resolvedProjectPath)) {
   throw "Project file not found: $resolvedProjectPath"
 }
 
+$normalizedVersion = if ([string]::IsNullOrWhiteSpace($Version)) {
+  Get-AutoVersion -ResolvedProjectPath $resolvedProjectPath -BumpKind $Bump
+} else {
+  Ensure-Version -InputVersion $Version
+}
+
+$tag = "v$normalizedVersion"
+if ([string]::IsNullOrWhiteSpace($ReleaseName)) {
+  $ReleaseName = $tag
+}
+
+Write-Step "Release version: $normalizedVersion"
+
+Push-Location $repoRoot
+try {
 if (-not $AllowDirty) {
   $dirty = git status --porcelain | Where-Object {
     $_ -and $_ -notmatch "^\?\?\s+artifacts/" -and $_ -notmatch "^\s*M\s+update-feed\.json$"
@@ -141,6 +283,9 @@ if (-not $AllowDirty) {
     throw "Working tree is not clean. Commit/stash changes first, or use -AllowDirty."
   }
 }
+
+Write-Step "Updating project version metadata to $normalizedVersion"
+Set-ProjectVersion -ProjectFilePath $resolvedProjectPath -VersionValue $normalizedVersion
 
 $root = (Resolve-Path ".").Path
 $artifactsDir = Join-Path $root "artifacts"

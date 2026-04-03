@@ -20,7 +20,15 @@ namespace BugCapture.Services
             try
             {
                 string json = File.ReadAllText(SettingsPath);
-                return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+
+                // Migrate older settings that may have empty update feed URL.
+                if (string.IsNullOrWhiteSpace(settings.AutoUpdateFeedUrl))
+                {
+                    settings.AutoUpdateFeedUrl = AppSettings.DefaultAutoUpdateFeedUrl;
+                }
+
+                return settings;
             }
             catch
             {

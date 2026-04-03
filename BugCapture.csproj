@@ -7,15 +7,17 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <Version>1.0.1</Version>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
+    <InformationalVersion>1.0.1</InformationalVersion>
   </PropertyGroup>
-
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
     <None Include="attributes.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
   <ItemGroup>
     <Compile Remove="ShareX\**" />
     <Compile Remove="tools_inspect\**" />
@@ -26,12 +28,10 @@
     <AvaloniaXaml Remove="ShareX\**" />
     <AvaloniaXaml Remove="tools_inspect\**" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="ShareX\ShareX.ScreenCaptureLib\ShareX.ScreenCaptureLib.csproj" />
     <ProjectReference Include="ShareX\ShareX.ImageEditor\src\ShareX.ImageEditor\ShareX.ImageEditor.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.12" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
