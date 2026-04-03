@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="300"
         x:Class="BugCapture.SettingsWindow"
         Title="REDMINE SETTINGS"
-        Width="540" Height="420"
+        Width="560" Height="520"
         WindowStartupLocation="CenterOwner"
         SystemDecorations="Full"
         ExtendClientAreaToDecorationsHint="True"
@@ -73,6 +73,16 @@
             <StackPanel>
                 <TextBlock Text="MATTERMOST ACCESS TOKEN" Classes="label" />
                 <TextBox Name="MattermostTokenTextBox" PasswordChar="*" Watermark="Nhập personal access token Mattermost..." />
+            </StackPanel>
+
+            <StackPanel>
+                <TextBlock Text="AUTO UPDATE" Classes="label" />
+                <CheckBox Name="AutoUpdateEnabledCheckBox" Content="Bật cập nhật tự động từ xa" IsChecked="True" />
+            </StackPanel>
+
+            <StackPanel>
+                <TextBlock Text="UPDATE FEED URL" Classes="label" />
+                <TextBox Name="AutoUpdateFeedUrlTextBox" Watermark="https://your-domain.com/bugcapture/update-feed.json" />
             </StackPanel>
         </StackPanel>
 

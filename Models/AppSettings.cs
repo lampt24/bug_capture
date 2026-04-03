@@ -14,6 +14,8 @@ namespace BugCapture.Models
         public string MattermostSelectedChannelReference { get; set; } = string.Empty;
         public string MattermostMentionText { get; set; } = string.Empty;
         public string MattermostThreadId { get; set; } = string.Empty;
+        public bool AutoUpdateEnabled { get; set; } = true;
+        public string AutoUpdateFeedUrl { get; set; } = string.Empty;
         public bool IsDarkMode { get; set; } = true;
 
         // Last selections

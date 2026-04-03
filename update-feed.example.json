@@ -1,0 +1,6 @@
+{
+  "version": "1.0.1",
+  "downloadUrl": "https://your-domain.com/downloads/BugCapture-1.0.1.exe",
+  "notes": "- Improve Mattermost integration\n- Add fullscreen-only image editor\n- UI and theme refinements",
+  "sha256": "PUT_REAL_SHA256_HERE"
+}

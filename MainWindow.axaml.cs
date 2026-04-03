@@ -53,6 +53,7 @@ namespace BugCapture
         // Redmine Integration
         private readonly RedmineService _redmineService;
         private readonly MattermostService _mattermostService;
+        private readonly AutoUpdateService _autoUpdateService;
         private const int ProjectIndentSpacesPerLevel = 2;
         private const int RootParentProjectId = 0;
         private const string FixedTrackerName = "Bug";
@@ -655,6 +656,7 @@ namespace BugCapture
 
             _redmineService = new RedmineService();
             _mattermostService = new MattermostService();
+            _autoUpdateService = new AutoUpdateService();
             // Load initial settings
             var settings = SettingsService.Load();
             RedmineUrl = settings.RedmineUrl;
@@ -687,7 +689,63 @@ namespace BugCapture
                 await LoadRedmineData();
                 await LoadMattermostData();
             }
+
+            _ = CheckAndRunAutoUpdateAsync();
             _isInitialized = true;
+        }
+
+        private static System.Version GetCurrentAppVersion()
+        {
+            return System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new System.Version(0, 0, 0, 0);
+        }
+
+        private async Task CheckAndRunAutoUpdateAsync()
+        {
+            try
+            {
+                var settings = SettingsService.Load();
+                if (!settings.AutoUpdateEnabled || string.IsNullOrWhiteSpace(settings.AutoUpdateFeedUrl))
+                {
+                    return;
+                }
+
+                var currentVersion = GetCurrentAppVersion();
+                var update = await _autoUpdateService.CheckForUpdateAsync(currentVersion, settings.AutoUpdateFeedUrl);
+                if (update == null)
+                {
+                    return;
+                }
+
+                var prompt =
+                    $"Đã có phiên bản mới: {update.LatestVersion} (hiện tại: {update.CurrentVersion})." + Environment.NewLine +
+                    "Bạn có muốn tải và cài đặt ngay không?";
+
+                if (!string.IsNullOrWhiteSpace(update.Notes))
+                {
+                    prompt += Environment.NewLine + Environment.NewLine + "Release notes:" + Environment.NewLine + update.Notes;
+                }
+
+                var userChoice = System.Windows.Forms.MessageBox.Show(
+                    prompt,
+                    "Cập nhật BugCapture",
+                    System.Windows.Forms.MessageBoxButtons.YesNo,
+                    System.Windows.Forms.MessageBoxIcon.Information);
+
+                if (userChoice != System.Windows.Forms.DialogResult.Yes)
+                {
+                    return;
+                }
+
+                StatusText = "Đang tải bản cập nhật...";
+                var installerPath = await _autoUpdateService.DownloadUpdateAsync(update);
+                _autoUpdateService.LaunchInstaller(installerPath);
+                Close();
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteException(ex, "Auto Update Error");
+                StatusText = $"Auto-update failed: {ex.Message}";
+            }
         }
 
         private async Task ShowSettingsDialog()
