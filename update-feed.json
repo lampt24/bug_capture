@@ -1,6 +1,6 @@
 {
-  "version": "1.0.4",
-  "sha256": "BE0247517E4A59114EF1C380D08F4D7671E704C7149C8A1BE6420961FEF46705",
-  "notes": "Release auto",
-  "downloadUrl": "https://github.com/lampt24/bug_capture/releases/download/v1.0.4/BugCapture-1.0.4-win-x64.zip"
+  "version": "1.0.5",
+  "sha256": "D4F72ACF25705C6B7E9E89B8A7EA305112090769C638E52E92F662B88605433F",
+  "downloadUrl": "https://github.com/lampt24/bug_capture/releases/download/v1.0.5/BugCapture-1.0.5-win-x64.zip",
+  "notes": "Release auto"
 }

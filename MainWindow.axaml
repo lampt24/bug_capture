@@ -59,6 +59,29 @@
 			<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
 		</Style>
 
+		<!-- ── Input controls border consistency ── -->
+		<Style Selector="ComboBox">
+			<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="CornerRadius" Value="0" />
+			<Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+		</Style>
+		<Style Selector="NumericUpDown">
+			<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="CornerRadius" Value="0" />
+			<Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+		</Style>
+		<Style Selector="DatePicker">
+			<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="CornerRadius" Value="0" />
+			<Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+		</Style>
+
 		<!-- ── Title Bar Editor ── -->
 		<Style Selector="TextBox.title-bar-editor">
 			<Setter Property="Background"   Value="#1A1A1A" />
@@ -282,7 +305,7 @@
 						<Grid Grid.Column="0" ColumnDefinitions="*,Auto" Margin="0,0,12,0">
 							<ComboBox HorizontalAlignment="Stretch"
 									  Height="32" FontSize="12" Padding="8,4"
-									  BorderThickness="0" CornerRadius="0"
+									  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" CornerRadius="0"
 									  Background="{DynamicResource SurfaceBrush}"
 									  ItemsSource="{Binding Projects}"
 									  SelectedItem="{Binding SelectedProjectItem}">
@@ -302,7 +325,7 @@
 						<TextBlock Grid.Column="1" Classes="card-label" Text="TRACKER" VerticalAlignment="Center" Margin="0,0,12,0" />
 						<ComboBox Grid.Column="2" HorizontalAlignment="Stretch"
 								  Height="32" FontSize="12" Padding="8,4"
-								  BorderThickness="0" CornerRadius="0"
+								  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" CornerRadius="0"
 								  Background="{DynamicResource SurfaceBrush}"
 								  ItemsSource="{Binding Trackers}"
 								  IsEnabled="{Binding IsTrackerSelectionEnabled}"
@@ -337,7 +360,7 @@
 					<TextBlock Grid.Row="3" Grid.Column="0" Classes="card-label" Text="ASSIGNEE" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
 					<ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Left"
 							  Height="32" FontSize="12" Padding="8,4" Width="200"
-							  BorderThickness="0" CornerRadius="0"
+							  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" CornerRadius="0"
 							  Background="{DynamicResource SurfaceBrush}"
 							  ItemsSource="{Binding Memberships}"
 							  PlaceholderText="Chọn (Tất cả)"
@@ -378,7 +401,7 @@
 												  SelectedItem="{Binding ListSelectedItem}"
 												  HorizontalAlignment="Stretch" Height="32"
 												  VerticalAlignment="Center"
-												  Background="{DynamicResource SurfaceBrush}" BorderThickness="0">
+												  Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
 											<ComboBox.ItemTemplate>
 												<DataTemplate>
 													<TextBlock Text="{Binding Label}" FontSize="12" />
@@ -398,14 +421,14 @@
 													   Height="32" FontSize="12"
 													   VerticalAlignment="Center" ShowButtonSpinner="False"
 													   Background="{DynamicResource SurfaceBrush}"
-													   BorderThickness="0" />
+													   BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" />
 
 										<!-- Date Template -->
 										<DatePicker IsVisible="{Binding IsDate}"
 													SelectedDate="{Binding DateValue}"
 													Height="32" FontSize="12"
 													VerticalAlignment="Center"
-													Background="{DynamicResource SurfaceBrush}" BorderThickness="0" />
+													Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" />
 
 										<!-- Bool Template -->
 										<CheckBox IsVisible="{Binding IsBool}"

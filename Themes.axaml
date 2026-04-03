@@ -27,7 +27,7 @@
             <Color x:Key="BgColor">#F4F6FA</Color>
             <Color x:Key="SurfaceColor">#FFFFFF</Color>
             <Color x:Key="CardColor">#FBFCFE</Color>
-            <Color x:Key="BorderColor">#E4E8EF</Color>
+            <Color x:Key="BorderColor">#626364</Color>
             <Color x:Key="AccentColor">#4C8DFF</Color>
             <Color x:Key="MutedColor">#000000</Color>
             <Color x:Key="TextColor">#1F2530</Color>
@@ -35,7 +35,7 @@
             <SolidColorBrush x:Key="BgBrush"      Color="#F4F6FA" />
             <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
             <SolidColorBrush x:Key="CardBrush"    Color="#FBFCFE" />
-            <SolidColorBrush x:Key="BorderBrush"  Color="#E4E8EF" />
+            <SolidColorBrush x:Key="BorderBrush"  Color="#626364" />
             <SolidColorBrush x:Key="AccentBrush"  Color="#4C8DFF" />
             <SolidColorBrush x:Key="MutedBrush"   Color="#000000" />
             <SolidColorBrush x:Key="TextBrush"    Color="#1F2530" />
