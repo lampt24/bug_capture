@@ -14,6 +14,8 @@ namespace BugCapture.Services
 {
   public class MattermostService
   {
+    private const bool EnableMattermostActionButtons = false;
+
     public sealed class MattermostInteractivePostOptions
     {
       public string Pretext { get; set; } = string.Empty;
@@ -182,6 +184,12 @@ namespace BugCapture.Services
       return "@" + _currentUsername;
     }
 
+    public async Task<string> GetCurrentUsernameAsync()
+    {
+      await EnsureCurrentUserIdAsync();
+      return _currentUsername ?? string.Empty;
+    }
+
     private async Task EnsureCurrentUserIdAsync()
     {
       if (!string.IsNullOrWhiteSpace(_currentUserId))
@@ -333,11 +341,19 @@ namespace BugCapture.Services
         return null;
       }
 
-      var integrationUrl = string.IsNullOrWhiteSpace(options.IntegrationUrl) ? "http://localhost" : options.IntegrationUrl.Trim();
       var assignee = string.IsNullOrWhiteSpace(options.Assignee) ? "Unassigned" : options.Assignee;
       var creator = string.IsNullOrWhiteSpace(options.Creator) ? "Unknown" : options.Creator;
       var createdAt = string.IsNullOrWhiteSpace(options.CreatedAtText) ? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") : options.CreatedAtText;
       var redmine = string.IsNullOrWhiteSpace(options.RedmineUrl) ? "N/A" : options.RedmineUrl;
+
+      var actions = new List<MattermostAttachmentActionDto>();
+      if (EnableMattermostActionButtons)
+      {
+        var integrationUrl = string.IsNullOrWhiteSpace(options.IntegrationUrl) ? "http://localhost" : options.IntegrationUrl.Trim();
+        actions.Add(CreateStatusAction("Đang fix", "in_progress", integrationUrl, options.IssueId));
+        actions.Add(CreateStatusAction("Đã Fix", "fixed", integrationUrl, options.IssueId));
+        actions.Add(CreateStatusAction("Đã Confirm", "confirmed", integrationUrl, options.IssueId));
+      }
 
       return new MattermostPostPropsDto
       {
@@ -356,12 +372,7 @@ namespace BugCapture.Services
               new MattermostAttachmentFieldDto { Title = "Created At", Value = createdAt, Short = true },
               new MattermostAttachmentFieldDto { Title = "Redmine", Value = redmine, Short = false }
             },
-            Actions = new List<MattermostAttachmentActionDto>
-            {
-              CreateStatusAction("Đang fix", "in_progress", integrationUrl, options.IssueId),
-              CreateStatusAction("Đã Fix", "fixed", integrationUrl, options.IssueId),
-              CreateStatusAction("Đã Confirm", "confirmed", integrationUrl, options.IssueId)
-            }
+            Actions = actions
           }
         }
       };

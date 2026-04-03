@@ -1566,7 +1566,9 @@ namespace BugCapture
                     Tracker = IdentifiableName.Create<Tracker>(SelectedTracker.Id),
                     Status = IdentifiableName.Create<IssueStatus>(_defaultStatusId),
                     Priority = IdentifiableName.Create<IssuePriority>(2), // Normal
-                    Subject = string.IsNullOrWhiteSpace(BugPrefix) ? BugTitle : $"【{BugPrefix}】{BugTitle}",
+                    Subject = string.IsNullOrWhiteSpace(BugPrefix)
+                        ? BugTitle
+                        : $"{BugPrefix.Trim()} {BugTitle}".Trim(),
                     Description = redmineDescription,
                     Uploads = uploads,
                     CustomFields = new List<IssueCustomField>(),
@@ -1702,8 +1704,13 @@ namespace BugCapture
                 ? string.Empty
                 : RedmineUrl.TrimEnd('/') + "/issues/" + issueId;
 
+            var trackerName = string.IsNullOrWhiteSpace(SelectedTracker?.Name)
+                ? "Bug"
+                : SelectedTracker!.Name.Trim();
+            var mattermostTitle = $"【{trackerName}】{issueSubject}".Trim();
+
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"[BUG] {issueSubject}");
+            sb.AppendLine(mattermostTitle);
             sb.AppendLine();
             sb.AppendLine(mattermostDescription);
             if (!string.IsNullOrWhiteSpace(redmineIssueUrl))
@@ -1714,18 +1721,22 @@ namespace BugCapture
 
             var message = sb.ToString().Trim();
             var assigneeMention = BuildMentionHandle(SelectedMembership?.User?.Name);
-            var creatorMention = await _mattermostService.GetCurrentUserMentionAsync();
-            if (string.IsNullOrWhiteSpace(creatorMention))
+            var creatorUsername = await _mattermostService.GetCurrentUsernameAsync();
+            if (string.IsNullOrWhiteSpace(creatorUsername))
             {
-                creatorMention = BuildMentionHandle(Environment.UserName);
+                creatorUsername = "Unknown";
+            }
+            else if (!creatorUsername.StartsWith("@", StringComparison.Ordinal))
+            {
+                creatorUsername = "@" + creatorUsername;
             }
 
             var interactiveOptions = new MattermostService.MattermostInteractivePostOptions
             {
-                Pretext = issueSubject,
+                Pretext = mattermostTitle,
                 Text = mattermostDescription,
                 Assignee = string.IsNullOrWhiteSpace(assigneeMention) ? (SelectedMembership?.User?.Name ?? string.Empty) : assigneeMention,
-                Creator = creatorMention,
+                Creator = creatorUsername,
                 CreatedAtText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                 RedmineUrl = redmineIssueUrl,
                 IntegrationUrl = MattermostIntegrationUrl,
