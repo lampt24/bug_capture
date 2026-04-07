@@ -240,8 +240,9 @@ function Set-ProjectVersion {
 }
 
 $token = Resolve-Token -InputToken $GitHubToken
-if ([string]::IsNullOrWhiteSpace($token)) {
-  throw "GitHub token is missing. Set -GitHubToken or env GITHUB_TOKEN/GH_TOKEN."
+$hasGitHubToken = -not [string]::IsNullOrWhiteSpace($token)
+if (-not $hasGitHubToken) {
+  Write-Step "GitHub token is missing. Running local release mode (zip + feed update only)."
 }
 
 Ensure-RepoFormat -RepoValue $Repo
@@ -319,7 +320,7 @@ if (-not (Test-Path $zipPath)) {
 $sha256 = (Get-FileHash $zipPath -Algorithm SHA256).Hash
 Write-Step "Artifact SHA256: $sha256"
 
-if (-not $SkipTag) {
+if ($hasGitHubToken -and -not $SkipTag) {
   $existingTag = git tag --list $tag
   if (-not $existingTag) {
     Write-Step "Creating git tag: $tag"
@@ -339,60 +340,73 @@ if (-not $SkipTag) {
     }
   }
 }
+elseif (-not $SkipTag) {
+  Write-Step "Skipping git tag creation/push because GitHub token is not available."
+}
 
-$headers = Get-AuthHeaders -Token $token
-$releaseBody = @{
-  tag_name = $tag
-  name = $ReleaseName
-  body = $ReleaseNotes
-  draft = $false
-  prerelease = $false
-  generate_release_notes = [string]::IsNullOrWhiteSpace($ReleaseNotes)
-} | ConvertTo-Json
+$downloadUrl = ""
+if ($hasGitHubToken) {
+  $headers = Get-AuthHeaders -Token $token
+  $releaseBody = @{
+    tag_name = $tag
+    name = $ReleaseName
+    body = $ReleaseNotes
+    draft = $false
+    prerelease = $false
+    generate_release_notes = [string]::IsNullOrWhiteSpace($ReleaseNotes)
+  } | ConvertTo-Json
 
-$releaseApi = "https://api.github.com/repos/$Repo/releases"
+  $releaseApi = "https://api.github.com/repos/$Repo/releases"
 
-Write-Step "Creating or reusing GitHub release $tag"
-$release = $null
-try {
-  $release = Invoke-RestMethod -Method Post -Uri $releaseApi -Headers $headers -ContentType "application/json" -Body $releaseBody
-} catch {
-  if ($_.Exception.Message -match "422") {
-    Write-Step "Release already exists, reading existing release by tag"
-    $release = Invoke-RestMethod -Method Get -Uri "https://api.github.com/repos/$Repo/releases/tags/$tag" -Headers $headers
-  } else {
-    throw
+  Write-Step "Creating or reusing GitHub release $tag"
+  $release = $null
+  try {
+    $release = Invoke-RestMethod -Method Post -Uri $releaseApi -Headers $headers -ContentType "application/json" -Body $releaseBody
+  } catch {
+    if ($_.Exception.Message -match "422") {
+      Write-Step "Release already exists, reading existing release by tag"
+      $release = Invoke-RestMethod -Method Get -Uri "https://api.github.com/repos/$Repo/releases/tags/$tag" -Headers $headers
+    } else {
+      throw
+    }
   }
+
+  if (-not $release -or -not $release.upload_url) {
+    throw "Unable to get release upload URL."
+  }
+
+  $existingAsset = $null
+  if ($release.assets) {
+    $existingAsset = $release.assets | Where-Object { $_.name -eq $zipName } | Select-Object -First 1
+  }
+
+  if ($existingAsset) {
+    Write-Step "Deleting existing asset: $zipName"
+    Invoke-RestMethod -Method Delete -Uri "https://api.github.com/repos/$Repo/releases/assets/$($existingAsset.id)" -Headers $headers | Out-Null
+  }
+
+  $uploadUrl = $release.upload_url -replace "\{\?name,label\}", ""
+  $uploadUrl = "${uploadUrl}?name=$zipName"
+
+  Write-Step "Uploading release asset"
+  $bytes = [System.IO.File]::ReadAllBytes($zipPath)
+  $asset = Invoke-RestMethod -Method Post -Uri $uploadUrl -Headers $headers -ContentType "application/zip" -Body $bytes
+
+  if (-not $asset -or -not $asset.browser_download_url) {
+    throw "Asset upload succeeded but no download URL returned."
+  }
+
+  $downloadUrl = $asset.browser_download_url
 }
-
-if (-not $release -or -not $release.upload_url) {
-  throw "Unable to get release upload URL."
-}
-
-$existingAsset = $null
-if ($release.assets) {
-  $existingAsset = $release.assets | Where-Object { $_.name -eq $zipName } | Select-Object -First 1
-}
-
-if ($existingAsset) {
-  Write-Step "Deleting existing asset: $zipName"
-  Invoke-RestMethod -Method Delete -Uri "https://api.github.com/repos/$Repo/releases/assets/$($existingAsset.id)" -Headers $headers | Out-Null
-}
-
-$uploadUrl = $release.upload_url -replace "\{\?name,label\}", ""
-$uploadUrl = "${uploadUrl}?name=$zipName"
-
-Write-Step "Uploading release asset"
-$bytes = [System.IO.File]::ReadAllBytes($zipPath)
-$asset = Invoke-RestMethod -Method Post -Uri $uploadUrl -Headers $headers -ContentType "application/zip" -Body $bytes
-
-if (-not $asset -or -not $asset.browser_download_url) {
-  throw "Asset upload succeeded but no download URL returned."
+else {
+  $downloadUrl = "https://github.com/$Repo/releases/download/$tag/$zipName"
+  Write-Step "Skipping GitHub release creation and upload due to missing token."
+  Write-Step "Using expected release URL in feed: $downloadUrl"
 }
 
 $feed = @{
   version = $normalizedVersion
-  downloadUrl = $asset.browser_download_url
+  downloadUrl = $downloadUrl
   notes = if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) { "Release $tag" } else { $ReleaseNotes }
   sha256 = $sha256
 }
@@ -432,7 +446,7 @@ if ($CommitFeed) {
 Write-Step "Release completed"
 Write-Host "Tag: $tag"
 Write-Host "Asset: $zipPath"
-Write-Host "DownloadUrl: $($asset.browser_download_url)"
+Write-Host "DownloadUrl: $downloadUrl"
 Write-Host "Feed: $(Resolve-Path $resolvedFeedPath)"
 Write-Host "SHA256: $sha256"
 }

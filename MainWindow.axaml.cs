@@ -18,6 +18,7 @@ using System.Text.RegularExpressions;
 using ShareX.HelpersLib;
 using Redmine.Net.Api.Types;
 using Redmine.Net.Api;
+using Avalonia.Threading;
 
 namespace BugCapture
 {
@@ -47,10 +48,13 @@ namespace BugCapture
         private string _moduleId = string.Empty;
         private CapturedImage? _currentlyEditingImage;
         private bool _isEditorVisible = false;
+        private double? _windowHeightBeforeEditor;
         private string _currentDateTime = string.Empty;
         private System.Threading.Timer? _clockTimer;
         private readonly Logger _logger = new Logger();
         private string _autoUpdateLogPath = string.Empty;
+        private const double HeightRestoreEpsilon = 0.5;
+        private bool _openEditorAfterCapture;
 
         // Redmine Integration
         private readonly RedmineService _redmineService;
@@ -70,6 +74,7 @@ namespace BugCapture
         private ProjectTracker? _selectedTracker;
         private ObservableCollection<ProjectMembership> _memberships = new();
         private ProjectMembership? _selectedMembership;
+        private int? _currentRedmineUserId;
         private ObservableCollection<CustomFieldControlViewModel> _customFieldControls = new();
         private bool _isSubmitting = false;
         private bool _isTrackerSelectionEnabled = true;
@@ -172,7 +177,72 @@ namespace BugCapture
 
                 _isEditorVisible = value;
                 OnPropertyChanged(nameof(IsEditorVisible));
+
+                if (value)
+                {
+                    if (WindowState == Avalonia.Controls.WindowState.Normal && !_windowHeightBeforeEditor.HasValue)
+                    {
+                        _windowHeightBeforeEditor = Height;
+                    }
+
+                    Dispatcher.UIThread.Post(CenterWindowOnCurrentScreen, DispatcherPriority.Loaded);
+                    return;
+                }
+
+                Dispatcher.UIThread.Post(RestoreWindowHeightAfterEditorHidden, DispatcherPriority.Loaded);
             }
+        }
+
+        private void RestoreWindowHeightAfterEditorHidden()
+        {
+            if (WindowState != Avalonia.Controls.WindowState.Normal)
+            {
+                _windowHeightBeforeEditor = null;
+                return;
+            }
+
+            if (_windowHeightBeforeEditor.HasValue)
+            {
+                var targetHeight = _windowHeightBeforeEditor.Value;
+                _windowHeightBeforeEditor = null;
+
+                if (!double.IsNaN(targetHeight)
+                    && targetHeight > 0
+                    && Math.Abs(Height - targetHeight) > HeightRestoreEpsilon)
+                {
+                    var originalSizeToContent = SizeToContent;
+                    SizeToContent = SizeToContent.Manual;
+                    Height = targetHeight;
+                    SizeToContent = originalSizeToContent;
+                }
+            }
+
+            Dispatcher.UIThread.Post(CenterWindowOnCurrentScreen, DispatcherPriority.Background);
+        }
+
+        private void CenterWindowOnCurrentScreen()
+        {
+            var screens = Screens;
+            if (screens == null)
+            {
+                return;
+            }
+
+            var targetScreen = screens.ScreenFromWindow(this) ?? screens.Primary;
+            if (targetScreen == null)
+            {
+                return;
+            }
+
+            double scaling = RenderScaling <= 0 ? 1.0 : RenderScaling;
+            int windowWidthPx = Math.Max(1, (int)Math.Round(Bounds.Width * scaling));
+            int windowHeightPx = Math.Max(1, (int)Math.Round(Bounds.Height * scaling));
+
+            var area = targetScreen.WorkingArea;
+            int x = area.X + Math.Max(0, (area.Width - windowWidthPx) / 2);
+            int y = area.Y + Math.Max(0, (area.Height - windowHeightPx) / 2);
+
+            Position = new PixelPoint(x, y);
         }
 
         public new event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
@@ -679,6 +749,7 @@ namespace BugCapture
             RedmineApiKey = settings.RedmineApiKey;
             MattermostServerUrl = settings.MattermostServerUrl;
             MattermostAccessToken = settings.MattermostAccessToken;
+            _openEditorAfterCapture = settings.OpenEditorAfterCapture;
 
             // Apply Theme
             if (Avalonia.Application.Current != null)
@@ -808,6 +879,7 @@ namespace BugCapture
                 RedmineApiKey = sw.CurrentSettings.RedmineApiKey;
                 MattermostServerUrl = sw.CurrentSettings.MattermostServerUrl;
                 MattermostAccessToken = sw.CurrentSettings.MattermostAccessToken;
+                _openEditorAfterCapture = sw.CurrentSettings.OpenEditorAfterCapture;
                 _ = LoadRedmineData();
                 _ = LoadMattermostData();
             }
@@ -831,6 +903,7 @@ namespace BugCapture
         {
             StatusText = "Connecting to Redmine...";
             _redmineService.Initialize(RedmineUrl, RedmineApiKey);
+            _currentRedmineUserId = await _redmineService.GetCurrentUserIdAsync();
 
             var projects = await _redmineService.GetProjectsAsync();
             Projects = BuildProjectTreeItems(projects);
@@ -1411,7 +1484,12 @@ namespace BugCapture
                     if (SelectedTracker == null) SelectedTracker = Trackers.FirstOrDefault();
                 }
 
-                if (settings.LastAssigneeId.HasValue)
+                if (_currentRedmineUserId.HasValue)
+                {
+                    SelectedMembership = Memberships.FirstOrDefault(m => m.User != null && m.User.Id == _currentRedmineUserId.Value);
+                }
+
+                if (SelectedMembership == null && settings.LastAssigneeId.HasValue)
                 {
                     SelectedMembership = Memberships.FirstOrDefault(m => m.User != null && m.User.Id == settings.LastAssigneeId.Value);
                 }
@@ -1965,7 +2043,7 @@ namespace BugCapture
                     CapturedImages.Add(result);
 
                     // Auto-select the new capture, but don't force show the editor if it was hidden
-                    OnThumbnailClickInternal(result, forceShowEditor: false);
+                    OnThumbnailClickInternal(result, forceShowEditor: _openEditorAfterCapture);
                 }
             }
             finally
@@ -1989,7 +2067,7 @@ namespace BugCapture
                     CapturedImages.Add(result);
 
                     // Auto-select the new capture, but don't force show the editor if it was hidden
-                    OnThumbnailClickInternal(result, forceShowEditor: false);
+                    OnThumbnailClickInternal(result, forceShowEditor: _openEditorAfterCapture);
                 }
             }
             finally
@@ -2348,7 +2426,7 @@ namespace BugCapture
             // Re-clicking the same opened image should be a no-op.
             if (ReferenceEquals(_currentlyEditingImage, image) && image.IsImage)
             {
-                if (!IsEditorVisible)
+                if (forceShowEditor && !IsEditorVisible)
                 {
                     IsEditorVisible = true;
                 }
@@ -2389,7 +2467,10 @@ namespace BugCapture
                 return;
             }
 
-            IsEditorVisible = true;
+            if (forceShowEditor)
+            {
+                IsEditorVisible = true;
+            }
 
             _currentlyEditingImage = image;
             StatusText = $"Editing {image.CaptureType}...";

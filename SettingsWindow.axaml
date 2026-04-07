@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="300"
         x:Class="BugCapture.SettingsWindow"
         Title="REDMINE SETTINGS"
-        Width="560" Height="520"
+        Width="560" Height="650"
         WindowStartupLocation="CenterOwner"
         SystemDecorations="Full"
         ExtendClientAreaToDecorationsHint="True"
@@ -23,7 +23,7 @@
             <Setter Property="BorderBrush"  Value="{DynamicResource BorderBrush}" />
             <Setter Property="Foreground"   Value="{DynamicResource TextBrush}" />
             <Setter Property="CaretBrush"   Value="{DynamicResource AccentBrush}" />
-            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Padding"      Value="10,6" />
             <Setter Property="FontSize"     Value="13" />
         </Style>
@@ -34,7 +34,7 @@
             <Setter Property="Background"       Value="{DynamicResource CardBrush}" />
             <Setter Property="BorderBrush"      Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness"  Value="1" />
-            <Setter Property="CornerRadius"     Value="0" />
+            <Setter Property="CornerRadius"     Value="4" />
             <Setter Property="Padding"          Value="14,7" />
             <Setter Property="FontSize"         Value="12" />
             <Setter Property="FontWeight"       Value="Medium" />
@@ -49,7 +49,7 @@
     <Grid RowDefinitions="Auto,*,Auto" Margin="20">
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="REDMINE + MATTERMOST CONFIGURATION" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+            <TextBlock Text="CONFIGURATION" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
             <TextBlock Text="Cấu hình kết nối Redmine và Mattermost để gửi báo cáo lỗi + thông báo." FontSize="12" Foreground="{DynamicResource TextBrush}" Opacity="0.7" />
         </StackPanel>
 
@@ -65,15 +65,19 @@
                 <TextBox Name="ApiKeyTextBox" PasswordChar="*" Watermark="Nhập mã token từ hồ sơ cá nhân Redmine..." />
             </StackPanel>
 
+            <Border Height="1" Background="{DynamicResource BorderBrush}" Opacity="0.6" Margin="0,2,0,2" />
+
             <StackPanel>
                 <TextBlock Text="MATTERMOST SERVER URL" Classes="label" />
-                <TextBox Name="MattermostUrlTextBox" Watermark="http://mattermost.yourdomain.com/" />
+                <TextBox Name="MattermostUrlTextBox" Watermark="http://172.16.6.131:8065/" />
             </StackPanel>
 
             <StackPanel>
                 <TextBlock Text="MATTERMOST ACCESS TOKEN" Classes="label" />
                 <TextBox Name="MattermostTokenTextBox" PasswordChar="*" Watermark="Nhập personal access token Mattermost..." />
             </StackPanel>
+
+            <Border Height="1" Background="{DynamicResource BorderBrush}" Opacity="0.6" Margin="0,2,0,2" />
 
             <StackPanel>
                 <TextBlock Text="AUTO UPDATE" Classes="label" />
@@ -82,7 +86,16 @@
 
             <StackPanel>
                 <TextBlock Text="UPDATE FEED URL" Classes="label" />
-                <TextBox Name="AutoUpdateFeedUrlTextBox" Watermark="https://raw.githubusercontent.com/lampt24/bug_capture/bug_capture/update-feed.json" />
+                <TextBox Name="AutoUpdateFeedUrlTextBox" Watermark="http://172.16.6.102:8081/update-feed.json" />
+            </StackPanel>
+
+            <Border Height="1" Background="{DynamicResource BorderBrush}" Opacity="0.6" Margin="0,2,0,2" />
+
+            <StackPanel>
+                <TextBlock Text="CAPTURE BEHAVIOR" Classes="label" />
+                <CheckBox Name="OpenEditorAfterCaptureCheckBox"
+                          Content="Sau khi chụp màn hình, mở editor ngay"
+                          IsChecked="False" />
             </StackPanel>
         </StackPanel>
 

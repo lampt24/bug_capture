@@ -991,6 +991,12 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
+            // Allow regular typing (including Space) when focus is in a text field.
+            if (_parentWindow?.FocusManager?.GetFocusedElement() is TextBox)
+            {
+                return;
+            }
+
             if (e.Key == Key.Space)
             {
                 _isSpacePressed = true;
@@ -998,9 +1004,6 @@ namespace ShareX.ImageEditor.Presentation.Views
                 e.Handled = true;
                 return;
             }
-
-            // Skip shortcuts when the user is typing in a text field
-            if (_parentWindow?.FocusManager?.GetFocusedElement() is TextBox) return;
 
             if (DataContext is MainViewModel vm)
             {
@@ -1104,6 +1107,12 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void OnKeyUp(object? sender, KeyEventArgs e)
         {
+            // Allow regular typing (including Space) when focus is in a text field.
+            if (_parentWindow?.FocusManager?.GetFocusedElement() is TextBox)
+            {
+                return;
+            }
+
             if (e.Key == Key.Space)
             {
                 _isSpacePressed = false;
@@ -1111,9 +1120,6 @@ namespace ShareX.ImageEditor.Presentation.Views
                 e.Handled = true;
                 return;
             }
-
-            // Skip shortcuts when the user is typing in a text field
-            if (_parentWindow?.FocusManager?.GetFocusedElement() is TextBox) return;
 
             if (DataContext is MainViewModel vm && e.KeyModifiers == KeyModifiers.None)
             {

@@ -757,6 +757,43 @@ namespace BugCapture.Services
             }
         }
 
+        public async Task<int?> GetCurrentUserIdAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_apiKey))
+            {
+                return null;
+            }
+
+            try
+            {
+                using var client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(20);
+                client.DefaultRequestHeaders.Add("X-Redmine-API-Key", _apiKey);
+
+                var url = _baseUrl.TrimEnd('/') + "/users/current.json";
+                var response = await client.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                var root = JObject.Parse(json);
+                var userIdToken = root["user"]?["id"];
+
+                if (userIdToken == null)
+                {
+                    return null;
+                }
+
+                int userId = userIdToken.Value<int>();
+                _logger.WriteLine($"Redmine: Current user id resolved: {userId}");
+                return userId;
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteException(ex, "Redmine Error (GetCurrentUserIdAsync)");
+                return null;
+            }
+        }
+
         public async Task<Issue?> CreateIssueAsync(Issue issue)
         {
             if (_manager == null) return null;

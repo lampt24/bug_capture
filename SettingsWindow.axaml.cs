@@ -22,6 +22,7 @@ namespace BugCapture
             var mattermostTokenBox = this.FindControl<TextBox>("MattermostTokenTextBox");
             var autoUpdateEnabledCheckBox = this.FindControl<CheckBox>("AutoUpdateEnabledCheckBox");
             var autoUpdateFeedUrlTextBox = this.FindControl<TextBox>("AutoUpdateFeedUrlTextBox");
+            var openEditorAfterCaptureCheckBox = this.FindControl<CheckBox>("OpenEditorAfterCaptureCheckBox");
 
             var saveBtn = this.FindControl<Button>("SaveButton");
             var cancelBtn = this.FindControl<Button>("CancelButton");
@@ -40,6 +41,7 @@ namespace BugCapture
             if (mattermostTokenBox != null) mattermostTokenBox.Text = CurrentSettings.MattermostAccessToken;
             if (autoUpdateEnabledCheckBox != null) autoUpdateEnabledCheckBox.IsChecked = CurrentSettings.AutoUpdateEnabled;
             if (autoUpdateFeedUrlTextBox != null) autoUpdateFeedUrlTextBox.Text = CurrentSettings.AutoUpdateFeedUrl;
+            if (openEditorAfterCaptureCheckBox != null) openEditorAfterCaptureCheckBox.IsChecked = CurrentSettings.OpenEditorAfterCapture;
         }
 
         private void InitializeComponent()
@@ -55,6 +57,7 @@ namespace BugCapture
             var mattermostTokenBox = this.FindControl<TextBox>("MattermostTokenTextBox");
             var autoUpdateEnabledCheckBox = this.FindControl<CheckBox>("AutoUpdateEnabledCheckBox");
             var autoUpdateFeedUrlTextBox = this.FindControl<TextBox>("AutoUpdateFeedUrlTextBox");
+            var openEditorAfterCaptureCheckBox = this.FindControl<CheckBox>("OpenEditorAfterCaptureCheckBox");
 
             if (urlBox == null || keyBox == null || string.IsNullOrWhiteSpace(urlBox.Text) || string.IsNullOrWhiteSpace(keyBox.Text))
             {
@@ -70,6 +73,7 @@ namespace BugCapture
             CurrentSettings.AutoUpdateFeedUrl = string.IsNullOrWhiteSpace(autoUpdateFeedUrl)
                 ? AppSettings.DefaultAutoUpdateFeedUrl
                 : autoUpdateFeedUrl;
+            CurrentSettings.OpenEditorAfterCapture = openEditorAfterCaptureCheckBox?.IsChecked ?? false;
             SettingsService.Save(CurrentSettings);
             IsSaved = true;
             Close();

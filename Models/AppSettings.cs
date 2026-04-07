@@ -4,7 +4,7 @@ namespace BugCapture.Models
 {
     public class AppSettings
     {
-        public const string DefaultAutoUpdateFeedUrl = "https://raw.githubusercontent.com/lampt24/bug_capture/bug_capture/update-feed.json";
+        public const string DefaultAutoUpdateFeedUrl = "http://172.16.6.102:8081/update-feed.json";
 
         public string RedmineUrl { get; set; } = "http://localhost:3000/";
         public string RedmineApiKey { get; set; } = string.Empty;
@@ -18,6 +18,7 @@ namespace BugCapture.Models
         public string MattermostThreadId { get; set; } = string.Empty;
         public bool AutoUpdateEnabled { get; set; } = true;
         public string AutoUpdateFeedUrl { get; set; } = DefaultAutoUpdateFeedUrl;
+        public bool OpenEditorAfterCapture { get; set; }
         public bool IsDarkMode { get; set; } = true;
 
         // Last selections

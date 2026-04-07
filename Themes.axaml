@@ -6,7 +6,7 @@
             <Color x:Key="SurfaceColor">#171C24</Color>
             <Color x:Key="CardColor">#1B212B</Color>
             <Color x:Key="BorderColor">#2A3240</Color>
-            <Color x:Key="AccentColor">#4C8DFF</Color>
+            <Color x:Key="AccentColor">#16a085</Color>
             <Color x:Key="MutedColor">#95A1B5</Color>
             <Color x:Key="TextColor">#E7ECF5</Color>
 
@@ -14,8 +14,8 @@
             <SolidColorBrush x:Key="SurfaceBrush" Color="#171C24" />
             <SolidColorBrush x:Key="CardBrush"    Color="#1B212B" />
             <SolidColorBrush x:Key="BorderBrush"  Color="#2A3240" />
-            <SolidColorBrush x:Key="AccentBrush"  Color="#4C8DFF" />
-            <SolidColorBrush x:Key="MutedBrush"   Color="#95A1B5" />
+            <SolidColorBrush x:Key="AccentBrush"  Color="#16a085" />
+            <SolidColorBrush x:Key="MutedBrush"   Color="#FFFFFF" />
             <SolidColorBrush x:Key="TextBrush"    Color="#E7ECF5" />
             
             <!-- Hover/Pressed states -->
@@ -28,7 +28,7 @@
             <Color x:Key="SurfaceColor">#FFFFFF</Color>
             <Color x:Key="CardColor">#FBFCFE</Color>
             <Color x:Key="BorderColor">#626364</Color>
-            <Color x:Key="AccentColor">#4C8DFF</Color>
+            <Color x:Key="AccentColor">#16a085</Color>
             <Color x:Key="MutedColor">#000000</Color>
             <Color x:Key="TextColor">#1F2530</Color>
 
@@ -36,7 +36,7 @@
             <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
             <SolidColorBrush x:Key="CardBrush"    Color="#FBFCFE" />
             <SolidColorBrush x:Key="BorderBrush"  Color="#626364" />
-            <SolidColorBrush x:Key="AccentBrush"  Color="#4C8DFF" />
+            <SolidColorBrush x:Key="AccentBrush"  Color="#16a085" />
             <SolidColorBrush x:Key="MutedBrush"   Color="#000000" />
             <SolidColorBrush x:Key="TextBrush"    Color="#1F2530" />
 

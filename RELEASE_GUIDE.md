@@ -104,9 +104,15 @@ pwsh -File .\scripts\create-release.ps1 `
 
 Error:
 
-`GitHub token is missing. Set -GitHubToken or env GITHUB_TOKEN/GH_TOKEN.`
+`GitHub token is missing. Running local release mode (zip + feed update only).`
 
-Fix: set `GITHUB_TOKEN` or pass `-GitHubToken`.
+Behavior:
+
+- Script still publishes and creates zip in `artifacts/`.
+- `update-feed.json` is still updated (`version`, `sha256`, `notes`, `downloadUrl`).
+- GitHub release/tag upload steps are skipped.
+
+If you need GitHub Release asset upload, set `GITHUB_TOKEN` or pass `-GitHubToken`.
 
 ### 6.2 Dirty working tree
 
