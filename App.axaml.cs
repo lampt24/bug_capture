@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using System;
 
 namespace BugCapture
 {
@@ -8,17 +9,30 @@ namespace BugCapture
     {
         public override void Initialize()
         {
+            StartupDiagnostics.Write("App.Initialize start");
             AvaloniaXamlLoader.Load(this);
+            StartupDiagnostics.Write("App.Initialize done");
         }
 
         public override void OnFrameworkInitializationCompleted()
         {
+            StartupDiagnostics.Write("OnFrameworkInitializationCompleted start");
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = new MainWindow();
+                try
+                {
+                    desktop.MainWindow = new MainWindow();
+                    StartupDiagnostics.Write("MainWindow created");
+                }
+                catch (Exception ex)
+                {
+                    StartupDiagnostics.WriteException("MainWindow creation failed", ex);
+                    throw;
+                }
             }
 
             base.OnFrameworkInitializationCompleted();
+            StartupDiagnostics.Write("OnFrameworkInitializationCompleted done");
         }
 
         private void OnTrayIconClicked(object? sender, System.EventArgs e)
@@ -41,6 +55,7 @@ namespace BugCapture
 
         private void OnExitClicked(object? sender, System.EventArgs e)
         {
+            StartupDiagnostics.Write("Tray Exit clicked");
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 desktop.Shutdown();

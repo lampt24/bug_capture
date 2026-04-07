@@ -352,9 +352,10 @@
 
 					<!-- Description Row -->
 					<TextBlock Grid.Row="2" Grid.Column="0" Classes="card-label" Text="MÔ TẢ BUG" Width="100" Margin="0,4,12,10" VerticalAlignment="Top" />
-					<TextBox Grid.Row="2" Grid.Column="1" Text="{Binding BugDescription}"
+					<TextBox Grid.Row="2" Grid.Column="1" x:Name="BugDescriptionTextBox" Text="{Binding BugDescription}"
 							 AcceptsReturn="True" TextWrapping="Wrap" Height="120" Margin="0,0,0,10"
 							 VerticalAlignment="Top" VerticalContentAlignment="Top"
+							 DragDrop.AllowDrop="True"
 							 Watermark="Mô tả chi tiết: bước tái hiện, kết quả mong đợi, kết quả thực tế..." />
 
 					<!-- Assignee Row -->
@@ -577,8 +578,6 @@
 										<DataTemplate x:DataType="models:CapturedImage">
 											<Button Padding="0" Margin="0" BorderThickness="0" Background="Transparent"
 													Click="OnThumbnailClick" CommandParameter="{Binding}"
-													PointerPressed="OnThumbnailPointerPressed"
-													PointerMoved="OnThumbnailPointerMoved"
 													DragDrop.AllowDrop="True"
 													DragDrop.DragOver="OnThumbnailDragOver"
 													DragDrop.Drop="OnThumbnailDrop">

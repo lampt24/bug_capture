@@ -19,6 +19,7 @@ using ShareX.HelpersLib;
 using Redmine.Net.Api.Types;
 using Redmine.Net.Api;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace BugCapture
 {
@@ -100,8 +101,10 @@ namespace BugCapture
         private string _lastCreatedIssueText = string.Empty;
         private Point? _thumbnailDragStartPoint;
         private CapturedImage? _thumbnailDragSource;
+        private Button? _thumbnailDragOriginButton;
         private bool _isThumbnailDragInProgress;
         private const string ThumbnailDragDataPrefix = "BUGCAPTURE_THUMBNAIL:";
+        private const string ThumbnailDragDataFormat = "application/x-bugcapture-thumbnail-index";
 
         public ObservableCollection<CapturedImage> CapturedImages { get; } = new ObservableCollection<CapturedImage>();
         public MainViewModel EditorViewModel { get; } = new MainViewModel();
@@ -727,6 +730,9 @@ namespace BugCapture
                 StatusText = $"Logger Init Error: {ex.Message}";
             }
 
+            ConfigureBugDescriptionDropTarget();
+            ConfigureThumbnailDragInput();
+
             EditorViewModel.ShowTaskModeButtons = false;
 
             // Subscribe to editor events
@@ -759,6 +765,153 @@ namespace BugCapture
             }
 
             BugPrefix = settings.LastIssuePrefix;
+        }
+
+        private void ConfigureThumbnailDragInput()
+        {
+            AddHandler(InputElement.PointerPressedEvent, OnGlobalThumbnailPointerPressed,
+                RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+            AddHandler(InputElement.PointerMovedEvent, OnGlobalThumbnailPointerMoved,
+                RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+            AddHandler(InputElement.PointerReleasedEvent, OnGlobalThumbnailPointerReleased,
+                RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+
+            _logger.WriteLine("[DND] Global thumbnail drag input handlers registered.");
+        }
+
+        private void OnGlobalThumbnailPointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                return;
+            }
+
+            if (!TryResolveThumbnailFromSource(e.Source, out var thumbnailButton, out var image))
+            {
+                return;
+            }
+
+            _thumbnailDragSource = image;
+            _thumbnailDragOriginButton = thumbnailButton;
+            _thumbnailDragStartPoint = e.GetPosition(thumbnailButton);
+            _logger.WriteLine($"[DND] Global drag source prepared: '{image.CaptureType}' | Path='{image.FilePath}'");
+        }
+
+        private async void OnGlobalThumbnailPointerMoved(object? sender, PointerEventArgs e)
+        {
+            if (_isThumbnailDragInProgress || _thumbnailDragSource == null || _thumbnailDragStartPoint == null || _thumbnailDragOriginButton == null)
+            {
+                return;
+            }
+
+            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                return;
+            }
+
+            var currentPoint = e.GetPosition(_thumbnailDragOriginButton);
+            var startPoint = _thumbnailDragStartPoint.Value;
+            if (Math.Abs(currentPoint.X - startPoint.X) < 4 && Math.Abs(currentPoint.Y - startPoint.Y) < 4)
+            {
+                return;
+            }
+
+            var sourceIndex = CapturedImages.IndexOf(_thumbnailDragSource);
+            if (sourceIndex < 0)
+            {
+                _logger.WriteLine("[DND] Global drag start aborted: source index not found.");
+                ResetThumbnailDragState();
+                return;
+            }
+
+            _isThumbnailDragInProgress = true;
+            var dragData = new DataObject();
+            dragData.Set(DataFormats.Text, $"{ThumbnailDragDataPrefix}{sourceIndex}");
+            dragData.Set(ThumbnailDragDataFormat, sourceIndex.ToString());
+            _logger.WriteLine($"[DND] Global drag start: index={sourceIndex}");
+
+            try
+            {
+                var result = await DragDrop.DoDragDrop(e, dragData, DragDropEffects.Move | DragDropEffects.Copy);
+                _logger.WriteLine($"[DND] Global drag completed: effect={result}");
+            }
+            finally
+            {
+                ResetThumbnailDragState();
+            }
+        }
+
+        private void OnGlobalThumbnailPointerReleased(object? sender, PointerReleasedEventArgs e)
+        {
+            if (!_isThumbnailDragInProgress)
+            {
+                ResetThumbnailDragState();
+            }
+        }
+
+        private bool TryResolveThumbnailFromSource(object? source, out Button thumbnailButton, out CapturedImage image)
+        {
+            thumbnailButton = null!;
+            image = null!;
+
+            if (source is not Visual visual)
+            {
+                return false;
+            }
+
+            Button? nearestButton = null;
+            var probe = visual;
+            while (probe != null)
+            {
+                if (probe is Button btn)
+                {
+                    nearestButton = btn;
+                    break;
+                }
+
+                probe = probe.GetVisualParent();
+            }
+
+            if (nearestButton != null && nearestButton.Classes.Contains("close-btn"))
+            {
+                return false;
+            }
+
+            probe = visual;
+            while (probe != null)
+            {
+                if (probe is Button btn
+                    && !btn.Classes.Contains("close-btn")
+                    && btn.DataContext is CapturedImage capturedImage)
+                {
+                    thumbnailButton = btn;
+                    image = capturedImage;
+                    return true;
+                }
+
+                probe = probe.GetVisualParent();
+            }
+
+            return false;
+        }
+
+        private void ConfigureBugDescriptionDropTarget()
+        {
+            var descriptionTextBox = this.FindControl<TextBox>("BugDescriptionTextBox");
+            if (descriptionTextBox == null)
+            {
+                _logger.WriteLine("[DND] BugDescriptionTextBox not found. Drop target registration skipped.");
+                return;
+            }
+
+            descriptionTextBox.AddHandler(DragDrop.DragOverEvent, OnBugDescriptionDragOver,
+                RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+            descriptionTextBox.AddHandler(DragDrop.DropEvent, OnBugDescriptionDrop,
+                RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+            descriptionTextBox.AddHandler(DragDrop.DragLeaveEvent, OnBugDescriptionDragLeave,
+                RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+
+            _logger.WriteLine("[DND] BugDescription drop handlers registered.");
         }
 
         protected override async void OnOpened(EventArgs e)
@@ -1621,13 +1774,20 @@ namespace BugCapture
 
                 var mattermostDescription = BugDescription.Trim();
                 var redmineDescription = BugDescription;
+                var embeddedImageFileNames = ExtractEmbeddedImageFileNames(redmineDescription);
                 var uploadedImageFileNames = new HashSet<string>(
                     uploads.Select(u => u.FileName ?? string.Empty)
                            .Where(name => !string.IsNullOrWhiteSpace(name))
                            .Where(name => CapturedImages.Any(item =>
                                item.IsImage &&
-                               string.Equals(System.IO.Path.GetFileName(item.FilePath), name, StringComparison.OrdinalIgnoreCase))),
+                               string.Equals(System.IO.Path.GetFileName(item.FilePath), name, StringComparison.OrdinalIgnoreCase)))
+                           .Where(name => !embeddedImageFileNames.Contains(name)),
                     StringComparer.OrdinalIgnoreCase);
+
+                if (embeddedImageFileNames.Count > 0)
+                {
+                    _logger.WriteLine($"[Submit] Embedded image markups in description: {embeddedImageFileNames.Count}");
+                }
 
                 if (uploadedImageFileNames.Count > 0)
                 {
@@ -1728,6 +1888,33 @@ namespace BugCapture
         public async void OnRefreshRedmineClick(object sender, RoutedEventArgs e)
         {
             await LoadRedmineData();
+        }
+
+        private static HashSet<string> ExtractEmbeddedImageFileNames(string description)
+        {
+            var results = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(description))
+            {
+                return results;
+            }
+
+            var matches = Regex.Matches(description, @"!([^!\r\n]+)!", RegexOptions.CultureInvariant);
+            foreach (Match match in matches)
+            {
+                var rawValue = match.Groups[1].Value?.Trim();
+                if (string.IsNullOrWhiteSpace(rawValue))
+                {
+                    continue;
+                }
+
+                var fileName = System.IO.Path.GetFileName(rawValue);
+                if (!string.IsNullOrWhiteSpace(fileName))
+                {
+                    results.Add(fileName);
+                }
+            }
+
+            return results;
         }
 
         private static string BuildFriendlyUploadErrorMessage(string filePath, Exception ex)
@@ -2207,11 +2394,6 @@ namespace BugCapture
 
         public void OnThumbnailPointerPressed(object? sender, PointerPressedEventArgs e)
         {
-            if (!ReferenceEquals(e.Source, sender))
-            {
-                return;
-            }
-
             if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             {
                 return;
@@ -2221,6 +2403,7 @@ namespace BugCapture
             {
                 _thumbnailDragSource = image;
                 _thumbnailDragStartPoint = e.GetPosition(btn);
+                _logger.WriteLine($"[DND] Drag source prepared: '{image.CaptureType}' | Path='{image.FilePath}'");
             }
         }
 
@@ -2251,6 +2434,7 @@ namespace BugCapture
             var sourceIndex = CapturedImages.IndexOf(_thumbnailDragSource);
             if (sourceIndex < 0)
             {
+                _logger.WriteLine("[DND] Drag start aborted: source index not found.");
                 ResetThumbnailDragState();
                 return;
             }
@@ -2258,10 +2442,13 @@ namespace BugCapture
             _isThumbnailDragInProgress = true;
             var dragData = new DataObject();
             dragData.Set(DataFormats.Text, $"{ThumbnailDragDataPrefix}{sourceIndex}");
+            dragData.Set(ThumbnailDragDataFormat, sourceIndex.ToString());
+            _logger.WriteLine($"[DND] Drag start: index={sourceIndex}, textFormat='{ThumbnailDragDataPrefix}{sourceIndex}', customFormat='{sourceIndex}'");
 
             try
             {
-                await DragDrop.DoDragDrop(e, dragData, DragDropEffects.Move);
+                var result = await DragDrop.DoDragDrop(e, dragData, DragDropEffects.Move | DragDropEffects.Copy);
+                _logger.WriteLine($"[DND] Drag completed: effect={result}");
             }
             finally
             {
@@ -2314,6 +2501,96 @@ namespace BugCapture
             }
 
             await HandleExternalDropAsync(e);
+        }
+
+        public void OnBugDescriptionDragOver(object? sender, DragEventArgs e)
+        {
+            if (sender is InputElement target)
+            {
+                target.Cursor = new Cursor(StandardCursorType.No);
+            }
+
+            var hasIndex = TryGetDraggedThumbnailIndex(e.Data, out var sourceIndex);
+            if (hasIndex || _thumbnailDragSource != null)
+            {
+                e.DragEffects = DragDropEffects.Copy;
+                if (sender is InputElement allowedTarget)
+                {
+                    allowedTarget.Cursor = new Cursor(StandardCursorType.Hand);
+                }
+                _logger.WriteLine($"[DND] Description drag-over accepted | hasIndex={hasIndex} | index={sourceIndex} | hasSourceFallback={_thumbnailDragSource != null}");
+                e.Handled = true;
+                return;
+            }
+
+            _logger.WriteLine("[DND] Description drag-over rejected.");
+            e.DragEffects = DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        public void OnBugDescriptionDragLeave(object? sender, RoutedEventArgs e)
+        {
+            if (sender is InputElement target)
+            {
+                target.Cursor = new Cursor(StandardCursorType.Ibeam);
+            }
+
+            _logger.WriteLine("[DND] Description drag-leave.");
+        }
+
+        public void OnBugDescriptionDrop(object? sender, DragEventArgs e)
+        {
+            CapturedImage? attachment = null;
+
+            if (TryGetDraggedThumbnailIndex(e.Data, out var sourceIndex)
+                && sourceIndex >= 0
+                && sourceIndex < CapturedImages.Count)
+            {
+                attachment = CapturedImages[sourceIndex];
+            }
+            else if (_thumbnailDragSource != null)
+            {
+                attachment = _thumbnailDragSource;
+            }
+
+            if (attachment == null)
+            {
+                _logger.WriteLine("[DND] Description drop ignored: no attachment resolved from drag data/source.");
+                e.DragEffects = DragDropEffects.None;
+                e.Handled = true;
+                return;
+            }
+
+            var fileName = System.IO.Path.GetFileName(attachment.FilePath);
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                _logger.WriteLine("[DND] Description drop ignored: file name is empty.");
+                e.DragEffects = DragDropEffects.None;
+                e.Handled = true;
+                return;
+            }
+
+            var markup = $"!{fileName}!";
+            var current = BugDescription ?? string.Empty;
+            var separator = string.IsNullOrWhiteSpace(current) ? string.Empty : Environment.NewLine;
+            var updated = current + separator + markup;
+
+            BugDescription = updated;
+
+            if (sender is TextBox textBox)
+            {
+                textBox.Text = updated;
+                textBox.CaretIndex = updated.Length;
+            }
+
+            e.DragEffects = DragDropEffects.Copy;
+            e.Handled = true;
+            if (sender is InputElement target)
+            {
+                target.Cursor = new Cursor(StandardCursorType.Ibeam);
+            }
+            _logger.WriteLine($"[DND] Description drop success: inserted '{markup}'");
+            StatusText = $"Inserted attachment markup: {markup}";
         }
 
         private Task HandleExternalDropAsync(DragEventArgs e)
@@ -2382,6 +2659,15 @@ namespace BugCapture
         {
             sourceIndex = -1;
 
+            if (data.Contains(ThumbnailDragDataFormat))
+            {
+                var raw = data.Get(ThumbnailDragDataFormat) as string;
+                if (!string.IsNullOrWhiteSpace(raw) && int.TryParse(raw, out sourceIndex))
+                {
+                    return true;
+                }
+            }
+
             var text = data.GetText();
             if (string.IsNullOrWhiteSpace(text) || !text.StartsWith(ThumbnailDragDataPrefix, StringComparison.Ordinal))
             {
@@ -2411,6 +2697,7 @@ namespace BugCapture
         {
             _thumbnailDragStartPoint = null;
             _thumbnailDragSource = null;
+            _thumbnailDragOriginButton = null;
             _isThumbnailDragInProgress = false;
         }
 
