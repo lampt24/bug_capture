@@ -454,18 +454,11 @@ namespace BugCapture.Services
                 );
 
             var fields = new List<CustomField>();
-            int skippedTextAreas = 0;
 
             foreach (var fieldNode in nodesByFieldId)
             {
                 int id = fieldNode.Key;
                 var node = fieldNode.Value;
-
-                if (node.Name.Equals("textarea", StringComparison.OrdinalIgnoreCase))
-                {
-                    skippedTextAreas++;
-                    continue;
-                }
 
                 string inputId = node.GetAttributeValue("id", string.Empty);
                 string label = FindLabelText(doc, inputId);
@@ -510,7 +503,7 @@ namespace BugCapture.Services
                 orderedFields.Select(f => $"{f.Id}:{f.Name}:{f.FieldFormat}:opts={f.PossibleValues?.Count ?? 0}"));
 
             return (orderedFields,
-                $"html-len={html.Length}; primary={primaryCount}; controls={controlCount}; matched={matchedNodes.Count}; unique={nodesByFieldId.Count}; skippedTextAreas={skippedTextAreas}; parsed={orderedFields.Count}; fields=[{fieldSummary}]");
+                $"html-len={html.Length}; primary={primaryCount}; controls={controlCount}; matched={matchedNodes.Count}; unique={nodesByFieldId.Count}; parsed={orderedFields.Count}; fields=[{fieldSummary}]");
         }
 
         private static int GetNodePriority(HtmlNode node)

@@ -78,6 +78,8 @@ namespace BugCapture
         private int? _currentRedmineUserId;
         private ObservableCollection<CustomFieldControlViewModel> _customFieldControls = new();
         private bool _isSubmitting = false;
+        private bool _submitToRedmine = true;
+        private bool _submitToMattermost = true;
         private bool _isTrackerSelectionEnabled = true;
         private string _mattermostServerUrl = string.Empty;
         private string _mattermostAccessToken = string.Empty;
@@ -390,6 +392,14 @@ namespace BugCapture
                 if (ctrl.Field != null)
                 {
                     var fieldIdStr = ctrl.Field.Id.ToString();
+
+                    if (ctrl.IsLongText)
+                    {
+                        // Long text is intentionally not persisted.
+                        settings.TrackerCustomFields[trackerIdStr].Remove(fieldIdStr);
+                        continue;
+                    }
+
                     settings.TrackerCustomFields[trackerIdStr][fieldIdStr] = ctrl.Value?.ToString() ?? string.Empty;
                 }
             }
@@ -406,6 +416,51 @@ namespace BugCapture
         {
             get => _isSubmitting;
             set { _isSubmitting = value; OnPropertyChanged(nameof(IsSubmitting)); }
+        }
+
+        public bool SubmitToRedmine
+        {
+            get => _submitToRedmine;
+            set
+            {
+                if (_submitToRedmine == value)
+                {
+                    return;
+                }
+
+                _submitToRedmine = value;
+                OnPropertyChanged(nameof(SubmitToRedmine));
+                SaveSubmitTargetSelections();
+            }
+        }
+
+        public bool SubmitToMattermost
+        {
+            get => _submitToMattermost;
+            set
+            {
+                if (_submitToMattermost == value)
+                {
+                    return;
+                }
+
+                _submitToMattermost = value;
+                OnPropertyChanged(nameof(SubmitToMattermost));
+                SaveSubmitTargetSelections();
+            }
+        }
+
+        private void SaveSubmitTargetSelections()
+        {
+            if (!_isInitialized)
+            {
+                return;
+            }
+
+            var settings = SettingsService.Load();
+            settings.SubmitToRedmine = SubmitToRedmine;
+            settings.SubmitToMattermost = SubmitToMattermost;
+            SettingsService.Save(settings);
         }
 
         public string MattermostServerUrl
@@ -756,6 +811,8 @@ namespace BugCapture
             MattermostServerUrl = settings.MattermostServerUrl;
             MattermostAccessToken = settings.MattermostAccessToken;
             _openEditorAfterCapture = settings.OpenEditorAfterCapture;
+            SubmitToRedmine = settings.SubmitToRedmine;
+            SubmitToMattermost = settings.SubmitToMattermost;
 
             // Apply Theme
             if (Avalonia.Application.Current != null)
@@ -1093,6 +1150,7 @@ namespace BugCapture
             {
                 IsMattermostReady = false;
                 MattermostConnectionStatus = "Mattermost chưa được cấu hình.";
+                SubmitToMattermost = false;
                 MattermostChannels = new ObservableCollection<MattermostChannelInfo>();
                 MattermostChannelTreeItems = new ObservableCollection<MattermostChannelTreeItem>();
                 MattermostUsers = new ObservableCollection<MattermostUserInfo>();
@@ -1133,6 +1191,7 @@ namespace BugCapture
             {
                 IsMattermostReady = false;
                 MattermostConnectionStatus = "Mattermost không kết nối được hoặc access token không hợp lệ.";
+                SubmitToMattermost = false;
                 MattermostChannels = new ObservableCollection<MattermostChannelInfo>();
                 MattermostChannelTreeItems = new ObservableCollection<MattermostChannelTreeItem>();
                 MattermostUsers = new ObservableCollection<MattermostUserInfo>();
@@ -1230,6 +1289,22 @@ namespace BugCapture
             {
                 MattermostMentionText = textBox.Text ?? string.Empty;
             }
+        }
+
+        public void OnDateTextBoxLostFocus(object? sender, RoutedEventArgs e)
+        {
+            if (sender is not TextBox textBox)
+            {
+                return;
+            }
+
+            if (textBox.DataContext is not CustomFieldControlViewModel customField || !customField.IsDate)
+            {
+                return;
+            }
+
+            customField.DateText = textBox.Text ?? string.Empty;
+            textBox.Text = customField.DateText;
         }
 
         private void RefreshMattermostMentionSuggestions()
@@ -1674,7 +1749,7 @@ namespace BugCapture
                     var viewModel = new CustomFieldControlViewModel(field);
 
                     // Restore saved value if exists
-                    if (settings.TrackerCustomFields.TryGetValue(trackerIdStr, out var fieldValues))
+                    if (!viewModel.IsLongText && settings.TrackerCustomFields.TryGetValue(trackerIdStr, out var fieldValues))
                     {
                         if (fieldValues.TryGetValue(field.Id.ToString(), out var savedVal))
                         {
@@ -1703,7 +1778,13 @@ namespace BugCapture
         {
             SaveSelections(force: true);
 
-            if (SelectedProject == null || SelectedTracker == null)
+            if (!SubmitToRedmine && !SubmitToMattermost)
+            {
+                StatusText = "Please check TO REDMINE or TO MATTERMOST.";
+                return;
+            }
+
+            if (SubmitToRedmine && (SelectedProject == null || SelectedTracker == null))
             {
                 StatusText = "Please select Project and Tracker.";
                 return;
@@ -1723,7 +1804,7 @@ namespace BugCapture
 
             ClearLastCreatedIssue();
             IsSubmitting = true;
-            StatusText = "Uploading attachments...";
+            StatusText = SubmitToRedmine ? "Uploading attachments..." : "Preparing message...";
 
             try
             {
@@ -1746,133 +1827,156 @@ namespace BugCapture
                     .Where(System.IO.File.Exists)
                     .ToList();
 
-                foreach (var img in attachmentsBySizeDesc)
+                if (SubmitToRedmine)
                 {
-                    Upload? upload;
-                    try
+                    foreach (var img in attachmentsBySizeDesc)
                     {
-                        upload = await _redmineService.UploadFileAsync(img.FilePath);
-                    }
-                    catch (Exception ex)
-                    {
-                        var friendlyMessage = BuildFriendlyUploadErrorMessage(img.FilePath, ex);
-                        var uploadErrorDetail =
-                            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Redmine Error (UploadFile):{Environment.NewLine}{ex}";
+                        Upload? upload;
+                        try
+                        {
+                            upload = await _redmineService.UploadFileAsync(img.FilePath);
+                        }
+                        catch (Exception ex)
+                        {
+                            var friendlyMessage = BuildFriendlyUploadErrorMessage(img.FilePath, ex);
+                            var uploadErrorDetail =
+                                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Redmine Error (UploadFile):{Environment.NewLine}{ex}";
 
-                        _logger.WriteLine(uploadErrorDetail);
-                        StatusText = friendlyMessage;
-                        System.Windows.Forms.MessageBox.Show(
-                            friendlyMessage,
-                            "Upload thất bại",
-                            System.Windows.Forms.MessageBoxButtons.OK,
-                            System.Windows.Forms.MessageBoxIcon.Error);
-                        return;
-                    }
+                            _logger.WriteLine(uploadErrorDetail);
+                            StatusText = friendlyMessage;
+                            System.Windows.Forms.MessageBox.Show(
+                                friendlyMessage,
+                                "Upload thất bại",
+                                System.Windows.Forms.MessageBoxButtons.OK,
+                                System.Windows.Forms.MessageBoxIcon.Error);
+                            return;
+                        }
 
-                    if (upload != null) uploads.Add(upload);
+                        if (upload != null) uploads.Add(upload);
+                    }
                 }
 
                 var mattermostDescription = BugDescription.Trim();
                 var redmineDescription = BugDescription;
-                var embeddedImageFileNames = ExtractEmbeddedImageFileNames(redmineDescription);
-                var uploadedImageFileNames = new HashSet<string>(
-                    uploads.Select(u => u.FileName ?? string.Empty)
-                           .Where(name => !string.IsNullOrWhiteSpace(name))
-                           .Where(name => CapturedImages.Any(item =>
-                               item.IsImage &&
-                               string.Equals(System.IO.Path.GetFileName(item.FilePath), name, StringComparison.OrdinalIgnoreCase)))
-                           .Where(name => !embeddedImageFileNames.Contains(name)),
-                    StringComparer.OrdinalIgnoreCase);
+                var issueSubject = string.IsNullOrWhiteSpace(BugPrefix)
+                    ? BugTitle
+                    : $"{BugPrefix.Trim()} {BugTitle}".Trim();
 
-                if (embeddedImageFileNames.Count > 0)
-                {
-                    _logger.WriteLine($"[Submit] Embedded image markups in description: {embeddedImageFileNames.Count}");
-                }
+                Issue? createdIssue = null;
+                bool mattermostSent = false;
 
-                if (uploadedImageFileNames.Count > 0)
+                if (SubmitToRedmine)
                 {
-                    redmineDescription += "\n\n" + (System.Globalization.CultureInfo.CurrentCulture.Name.StartsWith("vi") ? "--- Bằng chứng (Evidence): ---" : "--- Evidence: ---") + "\n";
-                    foreach (var fileName in uploadedImageFileNames)
+                    if (SelectedProject == null || SelectedTracker == null)
                     {
-                        redmineDescription += $"\n!{fileName}!";
-                    }
-                }
-
-                var issue = new Issue
-                {
-                    Project = IdentifiableName.Create<Project>(SelectedProject.Id),
-                    Tracker = IdentifiableName.Create<Tracker>(SelectedTracker.Id),
-                    Status = IdentifiableName.Create<IssueStatus>(_defaultStatusId),
-                    Priority = IdentifiableName.Create<IssuePriority>(2), // Normal
-                    Subject = string.IsNullOrWhiteSpace(BugPrefix)
-                        ? BugTitle
-                        : $"{BugPrefix.Trim()} {BugTitle}".Trim(),
-                    Description = redmineDescription,
-                    Uploads = uploads,
-                    CustomFields = new List<IssueCustomField>(),
-                    AssignedTo = SelectedMembership?.User
-                };
-
-                foreach (var fieldCtrl in CustomFieldControls)
-                {
-                    if (fieldCtrl.Value == null)
-                    {
-                        _logger?.WriteLine($"[Submit] Field {fieldCtrl.Field.Name} (Id:{fieldCtrl.Field.Id}) is NULL/Empty. Skipping.");
-                        continue;
+                        StatusText = "Please select Project and Tracker.";
+                        return;
                     }
 
-                    string? finalValue = fieldCtrl.Value?.ToString();
-                    _logger?.WriteLine($"[Submit] Field {fieldCtrl.Field.Name} (Id:{fieldCtrl.Field.Id}) -> Extracted string finalValue: '{finalValue}'");
-
-                    if (!string.IsNullOrEmpty(finalValue))
+                    var issue = new Issue
                     {
-                        var cf = IssueCustomField.CreateSingle(fieldCtrl.Field.Id, fieldCtrl.Field.Name, finalValue);
-                        issue.CustomFields.Add(cf);
-                        _logger?.WriteLine($"[Submit] ADDED IssueCustomField: Name='{cf.Name}', Id={cf.Id}, Multiple={cf.Multiple}, final attached value='{finalValue}'");
-                    }
-                    else
+                        Project = IdentifiableName.Create<Project>(SelectedProject.Id),
+                        Tracker = IdentifiableName.Create<Tracker>(SelectedTracker.Id),
+                        Status = IdentifiableName.Create<IssueStatus>(_defaultStatusId),
+                        Priority = IdentifiableName.Create<IssuePriority>(2), // Normal
+                        Subject = issueSubject,
+                        Description = redmineDescription,
+                        Uploads = uploads,
+                        CustomFields = new List<IssueCustomField>(),
+                        AssignedTo = SelectedMembership?.User
+                    };
+
+                    foreach (var fieldCtrl in CustomFieldControls)
                     {
-                        _logger?.WriteLine($"[Submit] finalValue evaluated to NullOrEmpty for {fieldCtrl.Field.Name}. Skipping addition to issue.");
+                        if (fieldCtrl.Value == null)
+                        {
+                            _logger?.WriteLine($"[Submit] Field {fieldCtrl.Field.Name} (Id:{fieldCtrl.Field.Id}) is NULL/Empty. Skipping.");
+                            continue;
+                        }
+
+                        string? finalValue = fieldCtrl.Value?.ToString();
+                        _logger?.WriteLine($"[Submit] Field {fieldCtrl.Field.Name} (Id:{fieldCtrl.Field.Id}) -> Extracted string finalValue: '{finalValue}'");
+
+                        if (!string.IsNullOrEmpty(finalValue))
+                        {
+                            var cf = IssueCustomField.CreateSingle(fieldCtrl.Field.Id, fieldCtrl.Field.Name, finalValue);
+                            issue.CustomFields.Add(cf);
+                            _logger?.WriteLine($"[Submit] ADDED IssueCustomField: Name='{cf.Name}', Id={cf.Id}, Multiple={cf.Multiple}, final attached value='{finalValue}'");
+                        }
+                        else
+                        {
+                            _logger?.WriteLine($"[Submit] finalValue evaluated to NullOrEmpty for {fieldCtrl.Field.Name}. Skipping addition to issue.");
+                        }
                     }
-                }
 
-                StatusText = "Creating issue...";
-                var createdIssue = await _redmineService.CreateIssueAsync(issue);
+                    StatusText = "Creating issue...";
+                    createdIssue = await _redmineService.CreateIssueAsync(issue);
+                    if (createdIssue == null)
+                    {
+                        ClearLastCreatedIssue();
+                        StatusText = "Failed to create Redmine issue.";
+                        return;
+                    }
 
-                if (createdIssue != null)
-                {
-                    StatusText = "Issue created successfully!";
                     SetLastCreatedIssue(createdIssue.Id);
+                }
 
+                if (SubmitToMattermost)
+                {
                     try
                     {
-                        await SendMattermostNotificationsAsync(createdIssue.Id, issue.Subject, mattermostDescription, attachmentFilePaths);
+                        int issueIdForMattermost = createdIssue?.Id ?? 0;
+                        mattermostSent = await SendMattermostNotificationsAsync(issueIdForMattermost, issueSubject, mattermostDescription, attachmentFilePaths);
                     }
                     catch (Exception ex)
                     {
                         _logger.WriteException(ex, "Mattermost Send Error");
-                        StatusText = $"Issue created, but Mattermost send failed: {ex.Message}";
+                        if (createdIssue != null)
+                        {
+                            StatusText = $"Issue created, but Mattermost send failed: {ex.Message}";
+                        }
+                        else
+                        {
+                            StatusText = $"Mattermost send failed: {ex.Message}";
+                        }
+                        return;
                     }
+                }
 
-                    // Optional: Clear form
-                    BugTitle = string.Empty;
-                    BugDescription = string.Empty;
-                    CapturedImages.Clear();
-                    _evidenceCounter = 1;
-
-                    // Clear currently editing image and editor state
-                    _currentlyEditingImage = null;
-                    EditorViewModel.ClearCommand.Execute(null);
-                    EditorViewModel.PreviewImage = null;
-                    EditorViewModel.ImageFilePath = null;
-                    EditorViewModel.IsDirty = false;
-                    EditorViewModel.ImageDimensions = "No image";
+                if (SubmitToRedmine && SubmitToMattermost)
+                {
+                    StatusText = mattermostSent
+                        ? "Issue created and Mattermost sent successfully!"
+                        : "Issue created successfully!";
+                }
+                else if (SubmitToRedmine)
+                {
+                    StatusText = "Issue created successfully!";
                 }
                 else
                 {
-                    ClearLastCreatedIssue();
-                    StatusText = "Failed to create Redmine issue.";
+                    StatusText = mattermostSent
+                        ? "Mattermost sent successfully!"
+                        : "No Mattermost target resolved.";
                 }
+
+                // Optional: Clear form
+                BugTitle = string.Empty;
+                BugDescription = string.Empty;
+                foreach (var fieldCtrl in CustomFieldControls.Where(f => f.IsLongText))
+                {
+                    fieldCtrl.Value = string.Empty;
+                }
+                CapturedImages.Clear();
+                _evidenceCounter = 1;
+
+                // Clear currently editing image and editor state
+                _currentlyEditingImage = null;
+                EditorViewModel.ClearCommand.Execute(null);
+                EditorViewModel.PreviewImage = null;
+                EditorViewModel.ImageFilePath = null;
+                EditorViewModel.IsDirty = false;
+                EditorViewModel.ImageDimensions = "No image";
             }
             catch (Exception ex)
             {
@@ -1888,33 +1992,6 @@ namespace BugCapture
         public async void OnRefreshRedmineClick(object sender, RoutedEventArgs e)
         {
             await LoadRedmineData();
-        }
-
-        private static HashSet<string> ExtractEmbeddedImageFileNames(string description)
-        {
-            var results = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            if (string.IsNullOrWhiteSpace(description))
-            {
-                return results;
-            }
-
-            var matches = Regex.Matches(description, @"!([^!\r\n]+)!", RegexOptions.CultureInvariant);
-            foreach (Match match in matches)
-            {
-                var rawValue = match.Groups[1].Value?.Trim();
-                if (string.IsNullOrWhiteSpace(rawValue))
-                {
-                    continue;
-                }
-
-                var fileName = System.IO.Path.GetFileName(rawValue);
-                if (!string.IsNullOrWhiteSpace(fileName))
-                {
-                    results.Add(fileName);
-                }
-            }
-
-            return results;
         }
 
         private static string BuildFriendlyUploadErrorMessage(string filePath, Exception ex)
@@ -1936,12 +2013,12 @@ namespace BugCapture
             return $"Không thể upload '{fileName}'. Vui lòng kiểm tra file hoặc thử lại sau.";
         }
 
-        private async Task SendMattermostNotificationsAsync(int issueId, string issueSubject, string mattermostDescription, List<string> attachmentFilePaths)
+        private async Task<bool> SendMattermostNotificationsAsync(int issueId, string issueSubject, string mattermostDescription, List<string> attachmentFilePaths)
         {
             if (!_mattermostService.IsConfigured)
             {
                 _logger.WriteLine("[Mattermost] Skip send: service is not configured.");
-                return;
+                return false;
             }
 
             var selectedChannel = SelectedMattermostChannelTreeItem?.Channel;
@@ -1952,7 +2029,7 @@ namespace BugCapture
             if (!shouldSendChannels && !shouldSendUsers && !shouldReplyThread)
             {
                 _logger.WriteLine("[Mattermost] Skip send: no channel selected, no mention users, and no thread id.");
-                return;
+                return false;
             }
 
             _logger.WriteLine($"[Mattermost] Begin send | Ready={IsMattermostReady} | Server={MattermostServerUrl} | IssueId={issueId} | Attachments={attachmentFilePaths.Count} | SendChannels={shouldSendChannels} | SendUsers={shouldSendUsers} | SendThread={shouldReplyThread}");
@@ -1965,9 +2042,12 @@ namespace BugCapture
                 _logger.WriteLine("[Mattermost] Channel send requested but SelectedMattermostChannelTreeItem is null.");
             }
 
-            var redmineIssueUrl = string.IsNullOrWhiteSpace(RedmineUrl)
-                ? string.Empty
-                : RedmineUrl.TrimEnd('/') + "/issues/" + issueId;
+            string redmineIssueUrl = string.Empty;
+
+            if (issueId > 0 && !string.IsNullOrWhiteSpace(RedmineUrl))
+            {
+                redmineIssueUrl = RedmineUrl.TrimEnd('/') + "/issues/" + issueId;
+            }
 
             var trackerName = string.IsNullOrWhiteSpace(SelectedTracker?.Name)
                 ? "Bug"
@@ -2039,10 +2119,7 @@ namespace BugCapture
             }
 
             _logger.WriteLine($"[Mattermost] Send result | Channels={channelSent} | Users={userSent} | Threads={threadSent}");
-            if (channelSent > 0 || userSent > 0 || threadSent > 0)
-            {
-                StatusText = $"Issue created. Mattermost sent to {channelSent} channel(s), {userSent} user(s), {threadSent} thread(s).";
-            }
+            return channelSent > 0 || userSent > 0 || threadSent > 0;
         }
 
         private EditorView? GetActiveEditorView()
@@ -2528,7 +2605,7 @@ namespace BugCapture
             e.Handled = true;
         }
 
-        public void OnBugDescriptionDragLeave(object? sender, RoutedEventArgs e)
+        public void OnBugDescriptionDragLeave(object? sender, DragEventArgs e)
         {
             if (sender is InputElement target)
             {
@@ -2571,6 +2648,31 @@ namespace BugCapture
             }
 
             var markup = $"!{fileName}!";
+
+            if (sender is TextBox customTextBox
+                && customTextBox.DataContext is CustomFieldControlViewModel customField
+                && customField.IsLongText)
+            {
+                var currentCustomValue = customField.Value?.ToString() ?? string.Empty;
+                var separatorCustom = string.IsNullOrWhiteSpace(currentCustomValue) ? string.Empty : Environment.NewLine;
+                var updatedCustomValue = currentCustomValue + separatorCustom + markup;
+
+                customField.Value = updatedCustomValue;
+                customTextBox.Text = updatedCustomValue;
+                customTextBox.CaretIndex = updatedCustomValue.Length;
+
+                e.DragEffects = DragDropEffects.Copy;
+                e.Handled = true;
+                if (sender is InputElement customTarget)
+                {
+                    customTarget.Cursor = new Cursor(StandardCursorType.Ibeam);
+                }
+
+                _logger.WriteLine($"[DND] Long text drop success: inserted '{markup}'");
+                StatusText = $"Inserted attachment markup into long text: {markup}";
+                return;
+            }
+
             var current = BugDescription ?? string.Empty;
             var separator = string.IsNullOrWhiteSpace(current) ? string.Empty : Environment.NewLine;
             var updated = current + separator + markup;
@@ -2589,6 +2691,7 @@ namespace BugCapture
             {
                 target.Cursor = new Cursor(StandardCursorType.Ibeam);
             }
+
             _logger.WriteLine($"[DND] Description drop success: inserted '{markup}'");
             StatusText = $"Inserted attachment markup: {markup}";
         }

@@ -20,6 +20,8 @@ namespace BugCapture.Models
         public string AutoUpdateFeedUrl { get; set; } = DefaultAutoUpdateFeedUrl;
         public bool OpenEditorAfterCapture { get; set; }
         public bool IsDarkMode { get; set; } = true;
+        public bool SubmitToRedmine { get; set; } = true;
+        public bool SubmitToMattermost { get; set; } = true;
 
         // Last selections
         public int? LastProjectId { get; set; }

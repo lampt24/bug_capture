@@ -342,9 +342,15 @@ namespace BugCapture.Services
       }
 
       var assignee = string.IsNullOrWhiteSpace(options.Assignee) ? "Unassigned" : options.Assignee;
-      var creator = string.IsNullOrWhiteSpace(options.Creator) ? "Unknown" : options.Creator;
-      var createdAt = string.IsNullOrWhiteSpace(options.CreatedAtText) ? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") : options.CreatedAtText;
-      var redmine = string.IsNullOrWhiteSpace(options.RedmineUrl) ? "N/A" : options.RedmineUrl;
+      var fields = new List<MattermostAttachmentFieldDto>
+      {
+        new MattermostAttachmentFieldDto { Title = "Assignee", Value = assignee, Short = true }
+      };
+
+      if (!string.IsNullOrWhiteSpace(options.RedmineUrl))
+      {
+        fields.Add(new MattermostAttachmentFieldDto { Title = "Redmine", Value = options.RedmineUrl, Short = false });
+      }
 
       var actions = new List<MattermostAttachmentActionDto>();
       if (EnableMattermostActionButtons)
@@ -365,13 +371,7 @@ namespace BugCapture.Services
             Color = "#D32F2F",
             Title = options.Pretext,
             Text = options.Text,
-            Fields = new List<MattermostAttachmentFieldDto>
-            {
-              new MattermostAttachmentFieldDto { Title = "Assignee", Value = assignee, Short = true },
-              new MattermostAttachmentFieldDto { Title = "Creator", Value = creator, Short = true },
-              new MattermostAttachmentFieldDto { Title = "Created At", Value = createdAt, Short = true },
-              new MattermostAttachmentFieldDto { Title = "Redmine", Value = redmine, Short = false }
-            },
+            Fields = fields,
             Actions = actions
           }
         }

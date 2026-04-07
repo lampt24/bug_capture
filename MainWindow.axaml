@@ -83,6 +83,80 @@
 			<Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
 		</Style>
 
+		<!-- ── CheckBox / RadioButton accent sync ── -->
+		<Style Selector="CheckBox">
+			<Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+			<Setter Property="FontSize" Value="12" />
+			<Setter Property="Cursor" Value="Hand" />
+
+			<Style Selector="^ /template/ Border#NormalRectangle">
+				<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+				<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+				<Setter Property="BorderThickness" Value="1" />
+			</Style>
+
+			<Style Selector="^:pointerover /template/ Border#NormalRectangle">
+				<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+			</Style>
+
+			<Style Selector="^:checked /template/ Border#NormalRectangle">
+				<Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+				<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+				<Setter Property="BorderThickness" Value="0" />
+			</Style>
+
+			<Style Selector="^:checked">
+				<Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+			</Style>
+
+			<Style Selector="^:checked /template/ Border">
+				<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+			</Style>
+		</Style>
+
+		<Style Selector="RadioButton">
+			<Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+			<Setter Property="FontSize" Value="12" />
+			<Setter Property="Cursor" Value="Hand" />
+
+			<Style Selector="^ /template/ Border#NormalEllipse">
+				<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+				<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+				<Setter Property="BorderThickness" Value="1" />
+			</Style>
+
+			<Style Selector="^ /template/ Ellipse#NormalEllipse">
+				<Setter Property="Fill" Value="{DynamicResource SurfaceBrush}" />
+				<Setter Property="Stroke" Value="{DynamicResource BorderBrush}" />
+				<Setter Property="StrokeThickness" Value="1" />
+			</Style>
+
+			<Style Selector="^:pointerover /template/ Border#NormalEllipse">
+				<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+			</Style>
+
+			<Style Selector="^:pointerover /template/ Ellipse#NormalEllipse">
+				<Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+			</Style>
+
+			<Style Selector="^:checked /template/ Border#NormalEllipse">
+				<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+			</Style>
+
+			<Style Selector="^:checked /template/ Ellipse#NormalEllipse">
+				<Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+			</Style>
+
+			<Style Selector="^:checked /template/ Ellipse">
+				<Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+				<Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+			</Style>
+
+			<Style Selector="^:checked /template/ Border">
+				<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+			</Style>
+		</Style>
+
 		<!-- ── Title Bar Editor ── -->
 		<Style Selector="TextBox.title-bar-editor">
 			<Setter Property="Background"   Value="#1A1A1A" />
@@ -116,6 +190,37 @@
 		<Style Selector="Button.dash-btn:pressed /template/ ContentPresenter">
 			<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
 			<Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+		</Style>
+
+		<!-- Keep CREATE ISSUE contrast in light mode -->
+		<Style Selector="Button.create-issue-btn">
+			<Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+			<Setter Property="Foreground" Value="White" />
+			<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+			<Setter Property="BorderThickness" Value="0" />
+		</Style>
+		<Style Selector="Button.create-issue-btn:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+			<Setter Property="Foreground" Value="White" />
+		</Style>
+		<Style Selector="Button.create-issue-btn:pressed /template/ ContentPresenter">
+			<Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+			<Setter Property="Foreground" Value="White" />
+		</Style>
+
+		<Style Selector="Button.primary-action-btn">
+			<Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+			<Setter Property="Foreground" Value="White" />
+			<Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+			<Setter Property="BorderThickness" Value="0" />
+		</Style>
+		<Style Selector="Button.primary-action-btn:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+			<Setter Property="Foreground" Value="White" />
+		</Style>
+		<Style Selector="Button.primary-action-btn:pressed /template/ ContentPresenter">
+			<Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+			<Setter Property="Foreground" Value="White" />
 		</Style>
 
 		<!-- ── Window control buttons (minimize / close) ── -->
@@ -298,7 +403,7 @@
 			<Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="12,0,12,6">
 
 				<!-- ── Row 0: Bug Description ── -->
-				<Grid Grid.Row="0" Margin="0,10,0,15" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+				<Grid Grid.Row="0" Margin="0,10,0,15" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 					<!-- Combined Redmine Row (Project, Tracker) -->
 					<TextBlock Grid.Row="0" Grid.Column="0" Classes="card-label" Text="PROJECT" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
 					<Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto,*" Margin="0,0,0,10">
@@ -359,14 +464,14 @@
 							 Watermark="Mô tả chi tiết: bước tái hiện, kết quả mong đợi, kết quả thực tế..." />
 
 					<!-- Assignee Row -->
-					<TextBlock Grid.Row="3" Grid.Column="0" Classes="card-label" Text="ASSIGNEE" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
+					<TextBlock Grid.Row="3" Grid.Column="0" Classes="card-label" Text="ASSIGNEE" Width="100" Margin="0,0,12,0" VerticalAlignment="Center" />
 					<ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Left"
 							  Height="32" FontSize="12" Padding="8,4" Width="200"
 							  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" CornerRadius="4"
 							  Background="{DynamicResource SurfaceBrush}"
 							  ItemsSource="{Binding Memberships}"
 							  PlaceholderText="Chọn (Tất cả)"
-							  SelectedItem="{Binding SelectedMembership}" Margin="0,0,0,10">
+							  SelectedItem="{Binding SelectedMembership}" Margin="0,0,0,0">
 						<ComboBox.ItemTemplate>
 							<DataTemplate>
 								<TextBlock Text="{Binding User.Name}" />
@@ -374,13 +479,45 @@
 						</ComboBox.ItemTemplate>
 					</ComboBox>
 
-					<Border Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
+					<!-- Long Text Custom Fields (below Assignee) -->
+					<ItemsControl Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding CustomFieldControls}" Margin="0,0,0,6">
+						<ItemsControl.ItemsPanel>
+							<ItemsPanelTemplate>
+								<StackPanel Spacing="2" />
+							</ItemsPanelTemplate>
+						</ItemsControl.ItemsPanel>
+						<ItemsControl.ItemTemplate>
+							<DataTemplate x:DataType="models:CustomFieldControlViewModel">
+								<Grid IsVisible="{Binding IsLongText}" ColumnDefinitions="100,*" Margin="0,0,0,0">
+									<TextBlock Grid.Column="0" Classes="card-label"
+											   Text="{Binding DisplayName}"
+											   Margin="0,0,12,0"
+												 MinWidth="100"
+											   VerticalAlignment="Top"
+											   TextWrapping="Wrap" />
+									<TextBox Grid.Column="1"
+											 Text="{Binding Value}"
+											 AcceptsReturn="True"
+											 TextWrapping="Wrap"
+											 MinHeight="72"
+											 VerticalAlignment="Top"
+											 VerticalContentAlignment="Top"
+											 DragDrop.AllowDrop="True"
+											 DragDrop.DragOver="OnBugDescriptionDragOver"
+											 DragDrop.DragLeave="OnBugDescriptionDragLeave"
+											 DragDrop.Drop="OnBugDescriptionDrop" />
+								</Grid>
+							</DataTemplate>
+						</ItemsControl.ItemTemplate>
+					</ItemsControl>
+
+					<Border Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
 							BorderBrush="{DynamicResource BorderBrush}"
 							BorderThickness="0,1,0,0"
 							Margin="0,2,0,10" />
 
 					<!-- Dynamic Custom Fields (3 items per row) -->
-					<ItemsControl Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding CustomFieldControls}" Margin="0,0,0,0">
+					<ItemsControl Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding CustomFieldControls}" Margin="0,0,0,0">
 						<ItemsControl.ItemsPanel>
 							<ItemsPanelTemplate>
 								<UniformGrid Columns="3" ColumnSpacing="5" />
@@ -388,7 +525,7 @@
 						</ItemsControl.ItemsPanel>
 						<ItemsControl.ItemTemplate>
 							<DataTemplate x:DataType="models:CustomFieldControlViewModel">
-								<Grid ColumnDefinitions="Auto,*" Margin="0,5,0,0">
+								<Grid IsVisible="{Binding IsNotLongText}" ColumnDefinitions="Auto,*" Margin="0,5,0,0">
 									<TextBlock Grid.Column="0" Classes="card-label" 
 											   Text="{Binding DisplayName}" 
 											   VerticalAlignment="Center" 
@@ -412,7 +549,7 @@
 										</ComboBox>
 
 										<!-- Text Template -->
-										<TextBox IsVisible="{Binding IsText}"
+										<TextBox IsVisible="{Binding IsShortText}"
 												 Text="{Binding Value}"
 												 VerticalAlignment="Center"
 												 Height="32" FontSize="12" />
@@ -425,12 +562,13 @@
 													   Background="{DynamicResource SurfaceBrush}"
 													   BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" />
 
-										<!-- Date Template -->
-										<DatePicker IsVisible="{Binding IsDate}"
-													SelectedDate="{Binding DateValue}"
-													Height="32" FontSize="12"
-													VerticalAlignment="Center"
-													Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" />
+										<!-- Date Template (manual yyyy/MM/dd input) -->
+										<TextBox IsVisible="{Binding IsDate}"
+													 Text="{Binding DateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+													 Height="32" FontSize="12"
+													 VerticalAlignment="Center"
+													 LostFocus="OnDateTextBoxLostFocus"
+													 Watermark="yyyy/MM/dd" />
 
 										<!-- Bool Template -->
 										<CheckBox IsVisible="{Binding IsBool}"
@@ -525,13 +663,13 @@
 					<!-- Top: Capture Actions (Outside Gallery) -->
 					<Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
 						<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
-							<Button Classes="dash-btn" Click="OnCaptureRegionClick" Width="160" HorizontalAlignment="Center" Height="42" Padding="12,6,12,6" Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+							<Button Classes="dash-btn primary-action-btn" Click="OnCaptureRegionClick" Width="160" HorizontalAlignment="Center" Height="42" Padding="12,6,12,6" Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
 								<StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="4">
 									<PathIcon Data="{StaticResource Icon.Camera}" Width="18" Height="18" HorizontalAlignment="Center" Foreground="White" />
 									<TextBlock Text="CAPTURE" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
 								</StackPanel>
 							</Button>
-							<Button Classes="dash-btn" Click="OnCaptureScrollClick" Width="160" HorizontalAlignment="Center" Height="42" Padding="12,6,12,6" Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+							<Button Classes="dash-btn primary-action-btn" Click="OnCaptureScrollClick" Width="160" HorizontalAlignment="Center" Height="42" Padding="12,6,12,6" Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
 								<StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="4">
 									<PathIcon Data="{StaticResource Icon.Scroll}" Width="18" Height="18" HorizontalAlignment="Center" Foreground="White" />
 									<TextBlock Text="SCROLL CAPTURE" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
@@ -540,12 +678,18 @@
 						</StackPanel>
 
 						<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-							<Button Classes="dash-btn" Content="CREATE ISSUE"
+							<CheckBox Content="TO REDMINE" IsChecked="{Binding SubmitToRedmine, Mode=TwoWay}" VerticalAlignment="Center" FontSize="12" />
+							<CheckBox Content="TO MATTERMOST" IsChecked="{Binding SubmitToMattermost, Mode=TwoWay}" IsEnabled="{Binding IsMattermostReady}" VerticalAlignment="Center" FontSize="12" />
+							<Button Classes="dash-btn create-issue-btn"
 									IsEnabled="{Binding !IsSubmitting}"
 									Click="OnSubmitToRedmineClick"
 									Height="42"
 									VerticalContentAlignment="Center"
 									Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0">
+								<StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" HorizontalAlignment="Center">
+									<PathIcon Data="{StaticResource Icon.Bug}" Width="14" Height="14" Foreground="White" />
+									<TextBlock Text="CREATE ISSUE" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+								</StackPanel>
 							</Button>
 						</StackPanel>
 					</Grid>
