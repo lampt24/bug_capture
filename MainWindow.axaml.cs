@@ -2656,6 +2656,133 @@ namespace BugCapture
             e.Handled = true;
         }
 
+        public void OnGalleryPointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            if (sender is Control control)
+            {
+                control.Focus();
+            }
+        }
+
+        public async void OnGalleryKeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.V)
+            {
+                e.Handled = true;
+                await HandlePasteFromClipboardAsync();
+            }
+        }
+
+        private async Task HandlePasteFromClipboardAsync()
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel?.Clipboard == null) return;
+
+            try
+            {
+                var formats = await topLevel.Clipboard.GetFormatsAsync();
+                int addedCount = 0;
+                CapturedImage? firstAdded = null;
+
+                // Check for files
+                if (formats != null && (formats.Contains(DataFormats.Files) || formats.Contains("FileNames") || formats.Contains("Files") || formats.Contains("application/x-avalonia-file-list")))
+                {
+#pragma warning disable CS0618
+                    var data = await topLevel.Clipboard.GetDataAsync(DataFormats.Files) 
+                               ?? await topLevel.Clipboard.GetDataAsync("FileNames") 
+                               ?? await topLevel.Clipboard.GetDataAsync("Files")
+                               ?? await topLevel.Clipboard.GetDataAsync("application/x-avalonia-file-list");
+#pragma warning restore CS0618
+
+                    if (data is IEnumerable<IStorageItem> storageItems)
+                    {
+                        foreach (var item in storageItems)
+                        {
+                            var localPath = item.TryGetLocalPath();
+                            if (!string.IsNullOrWhiteSpace(localPath) && ProcessSingleFilePath(localPath, ref firstAdded)) addedCount++;
+                        }
+                    }
+                    else if (data is IEnumerable<string> filePaths)
+                    {
+                        foreach (var path in filePaths)
+                        {
+                            if (!string.IsNullOrWhiteSpace(path) && ProcessSingleFilePath(path, ref firstAdded)) addedCount++;
+                        }
+                    }
+                    
+                    if (addedCount > 0)
+                    {
+                        FinalizePaste(addedCount, firstAdded);
+                        return;
+                    }
+                }
+
+                // Check for Images
+                if (formats != null && (formats.Contains("PNG") || formats.Contains("image/png") || formats.Contains("Bitmap")))
+                {
+                    var data = await topLevel.Clipboard.GetDataAsync("PNG")
+                               ?? await topLevel.Clipboard.GetDataAsync("image/png")
+                               ?? await topLevel.Clipboard.GetDataAsync("Bitmap");
+                               
+                    if (data is byte[] imageBytes && imageBytes.Length > 0)
+                    {
+                        var tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"Clipboard_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+                        System.IO.File.WriteAllBytes(tempFile, imageBytes);
+                        if (ProcessSingleFilePath(tempFile, ref firstAdded))
+                        {
+                            FinalizePaste(1, firstAdded);
+                            return;
+                        }
+                    }
+                }
+                
+                // Fallback: check if text is a valid file path
+                var textValue = await topLevel.Clipboard.GetTextAsync();
+                if (!string.IsNullOrWhiteSpace(textValue))
+                {
+                    var possiblePath = textValue.Trim('"', '\'', ' ', '\r', '\n');
+                    if (System.IO.File.Exists(possiblePath))
+                    {
+                        if (ProcessSingleFilePath(possiblePath, ref firstAdded))
+                        {
+                            FinalizePaste(1, firstAdded);
+                            return;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteLine($"[Clipboard] Error pasting: {ex.Message}");
+                StatusText = $"[Error] Clipboard paste failed: {ex.Message}";
+            }
+        }
+
+        private bool ProcessSingleFilePath(string localPath, ref CapturedImage? firstAdded)
+        {
+            if (CapturedImages.Any(existing => string.Equals(existing.FilePath, localPath, StringComparison.OrdinalIgnoreCase)))
+                return false;
+
+            var attachment = CreateAttachmentFromFile(localPath);
+            if (attachment == null) return false;
+
+            CapturedImages.Add(attachment);
+            firstAdded ??= attachment;
+            return true;
+        }
+
+        private void FinalizePaste(int addedCount, CapturedImage? firstAdded)
+        {
+            if (firstAdded != null)
+            {
+                OnThumbnailClickInternal(firstAdded, forceShowEditor: false);
+            }
+            if (addedCount > 0)
+            {
+                StatusText = $"Pasted {addedCount} attachment(s) from clipboard.";
+            }
+        }
+
         public async void OnGalleryDrop(object? sender, DragEventArgs e)
         {
             if (TryGetDraggedThumbnailIndex(e.Data, out var sourceIndex))

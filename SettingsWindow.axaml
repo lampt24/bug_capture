@@ -5,6 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="300"
         x:Class="BugCapture.SettingsWindow"
         Title="REDMINE SETTINGS"
+        Icon="/Assets/app_icon.png"
         Width="560" Height="650"
         WindowStartupLocation="CenterOwner"
         SystemDecorations="Full"
