@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using BugCapture.Models;
 using BugCapture.Services;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Threading.Tasks;
 using Avalonia;
 using ShareX.ImageEditor.Presentation.Views;
@@ -409,7 +410,35 @@ namespace BugCapture
         public ObservableCollection<CustomFieldControlViewModel> CustomFieldControls
         {
             get => _customFieldControls;
-            set { _customFieldControls = value; OnPropertyChanged(nameof(CustomFieldControls)); }
+            set
+            {
+                if (ReferenceEquals(_customFieldControls, value))
+                {
+                    return;
+                }
+
+                _customFieldControls.CollectionChanged -= OnCustomFieldControlsCollectionChanged;
+                _customFieldControls = value ?? new ObservableCollection<CustomFieldControlViewModel>();
+                _customFieldControls.CollectionChanged += OnCustomFieldControlsCollectionChanged;
+
+                OnPropertyChanged(nameof(CustomFieldControls));
+                OnPropertyChanged(nameof(LongTextCustomFieldControls));
+                OnPropertyChanged(nameof(NonLongTextCustomFieldControls));
+            }
+        }
+
+        public IEnumerable<CustomFieldControlViewModel> LongTextCustomFieldControls =>
+            CustomFieldControls
+                .Where(control => control.IsLongText)
+                .OrderBy(control => control.Field.Id);
+
+        public IEnumerable<CustomFieldControlViewModel> NonLongTextCustomFieldControls =>
+            CustomFieldControls.Where(control => !control.IsLongText);
+
+        private void OnCustomFieldControlsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(LongTextCustomFieldControls));
+            OnPropertyChanged(nameof(NonLongTextCustomFieldControls));
         }
 
         public bool IsSubmitting
@@ -765,6 +794,7 @@ namespace BugCapture
             InitializeComponent();
             _captureService = new ShareXCaptureService();
             _appVersionText = GetCurrentAppVersion().ToString(3);
+            _customFieldControls.CollectionChanged += OnCustomFieldControlsCollectionChanged;
             // Setup logging to file in LocalAppData (safer)
             try
             {

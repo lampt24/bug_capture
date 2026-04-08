@@ -480,7 +480,7 @@
 					</ComboBox>
 
 					<!-- Long Text Custom Fields (below Assignee) -->
-					<ItemsControl Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding CustomFieldControls}" Margin="0,0,0,6">
+					<ItemsControl Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding LongTextCustomFieldControls}" Margin="0,0,0,6">
 						<ItemsControl.ItemsPanel>
 							<ItemsPanelTemplate>
 								<StackPanel Spacing="2" />
@@ -488,7 +488,7 @@
 						</ItemsControl.ItemsPanel>
 						<ItemsControl.ItemTemplate>
 							<DataTemplate x:DataType="models:CustomFieldControlViewModel">
-								<Grid IsVisible="{Binding IsLongText}" ColumnDefinitions="100,*" Margin="0,0,0,0">
+								<Grid ColumnDefinitions="100,*" Margin="0,8,0,0">
 									<TextBlock Grid.Column="0" Classes="card-label"
 											   Text="{Binding DisplayName}"
 											   Margin="0,0,12,0"
@@ -517,7 +517,7 @@
 							Margin="0,2,0,10" />
 
 					<!-- Dynamic Custom Fields (3 items per row) -->
-					<ItemsControl Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding CustomFieldControls}" Margin="0,0,0,0">
+					<ItemsControl Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding NonLongTextCustomFieldControls}" Margin="0,0,0,0">
 						<ItemsControl.ItemsPanel>
 							<ItemsPanelTemplate>
 								<UniformGrid Columns="3" ColumnSpacing="5" />
@@ -525,7 +525,7 @@
 						</ItemsControl.ItemsPanel>
 						<ItemsControl.ItemTemplate>
 							<DataTemplate x:DataType="models:CustomFieldControlViewModel">
-								<Grid IsVisible="{Binding IsNotLongText}" ColumnDefinitions="Auto,*" Margin="0,5,0,0">
+								<Grid ColumnDefinitions="Auto,*" Margin="0,5,0,0">
 									<TextBlock Grid.Column="0" Classes="card-label" 
 											   Text="{Binding DisplayName}" 
 											   VerticalAlignment="Center" 
