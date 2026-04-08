@@ -73,8 +73,8 @@
             </StackPanel>
 
             <StackPanel>
-                <TextBlock Text="MATTERMOST ACCESS TOKEN" Classes="label" />
-                <TextBox Name="MattermostTokenTextBox" PasswordChar="*" Watermark="Nhập personal access token Mattermost..." />
+                <TextBlock Text="MATTERMOST BOT ACCESS TOKEN" Classes="label" />
+                <TextBox Name="MattermostTokenTextBox" PasswordChar="*" Watermark="Nhập access token của BOT account Mattermost..." />
             </StackPanel>
 
             <Border Height="1" Background="{DynamicResource BorderBrush}" Opacity="0.6" Margin="0,2,0,2" />

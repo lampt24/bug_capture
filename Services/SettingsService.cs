@@ -28,6 +28,12 @@ namespace BugCapture.Services
                     settings.AutoUpdateFeedUrl = AppSettings.DefaultAutoUpdateFeedUrl;
                 }
 
+                if (string.IsNullOrWhiteSpace(settings.MattermostBotAccessToken)
+                    && !string.IsNullOrWhiteSpace(settings.MattermostAccessToken))
+                {
+                    settings.MattermostBotAccessToken = settings.MattermostAccessToken;
+                }
+
                 return settings;
             }
             catch

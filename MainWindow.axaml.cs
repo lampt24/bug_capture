@@ -97,6 +97,7 @@ namespace BugCapture
         private string _mattermostMentionText = string.Empty;
         private string _mattermostThreadId = string.Empty;
         private ObservableCollection<string> _mattermostMentionSuggestions = new();
+        private readonly Dictionary<string, List<MattermostUserInfo>> _mattermostChannelMembersCache = new(StringComparer.OrdinalIgnoreCase);
         private bool _isRefreshingMentionSuggestions;
         private bool _isApplyingMentionSuggestion;
         private bool _isApplyingMattermostSettings;
@@ -664,6 +665,12 @@ namespace BugCapture
 
                 _mattermostChannelTargetsText = value;
                 OnPropertyChanged(nameof(MattermostChannelTargetsText));
+
+                if (MentionMattermostUsers)
+                {
+                    RefreshMattermostMentionSuggestions();
+                }
+
                 SaveMattermostSelections();
             }
         }
@@ -839,7 +846,9 @@ namespace BugCapture
             RedmineUrl = settings.RedmineUrl;
             RedmineApiKey = settings.RedmineApiKey;
             MattermostServerUrl = settings.MattermostServerUrl;
-            MattermostAccessToken = settings.MattermostAccessToken;
+            MattermostAccessToken = string.IsNullOrWhiteSpace(settings.MattermostBotAccessToken)
+                ? settings.MattermostAccessToken
+                : settings.MattermostBotAccessToken;
             _openEditorAfterCapture = settings.OpenEditorAfterCapture;
             SubmitToRedmine = settings.SubmitToRedmine;
             SubmitToMattermost = settings.SubmitToMattermost;
@@ -1118,7 +1127,9 @@ namespace BugCapture
                 RedmineUrl = sw.CurrentSettings.RedmineUrl;
                 RedmineApiKey = sw.CurrentSettings.RedmineApiKey;
                 MattermostServerUrl = sw.CurrentSettings.MattermostServerUrl;
-                MattermostAccessToken = sw.CurrentSettings.MattermostAccessToken;
+                MattermostAccessToken = string.IsNullOrWhiteSpace(sw.CurrentSettings.MattermostBotAccessToken)
+                    ? sw.CurrentSettings.MattermostAccessToken
+                    : sw.CurrentSettings.MattermostBotAccessToken;
                 _openEditorAfterCapture = sw.CurrentSettings.OpenEditorAfterCapture;
                 _ = LoadRedmineData();
                 _ = LoadMattermostData();
@@ -1175,6 +1186,7 @@ namespace BugCapture
         private async Task LoadMattermostData()
         {
             MattermostMentionSuggestions.Clear();
+            _mattermostChannelMembersCache.Clear();
 
             if (string.IsNullOrWhiteSpace(MattermostServerUrl) || string.IsNullOrWhiteSpace(MattermostAccessToken))
             {
@@ -1337,7 +1349,7 @@ namespace BugCapture
             textBox.Text = customField.DateText;
         }
 
-        private void RefreshMattermostMentionSuggestions()
+        private async void RefreshMattermostMentionSuggestions()
         {
             if (_isRefreshingMentionSuggestions || _isApplyingMentionSuggestion)
             {
@@ -1354,12 +1366,6 @@ namespace BugCapture
                     return;
                 }
 
-                if (MattermostUsers.Count == 0)
-                {
-                    MattermostMentionSuggestions = new ObservableCollection<string>();
-                    return;
-                }
-
                 var currentText = MattermostMentionText ?? string.Empty;
                 if (!TryGetCurrentMentionQuery(currentText, out var query))
                 {
@@ -1367,7 +1373,14 @@ namespace BugCapture
                     return;
                 }
 
-                var suggestions = MattermostUsers
+                var candidateUsers = await GetCandidateMattermostUsersAsync();
+                if (candidateUsers.Count == 0)
+                {
+                    MattermostMentionSuggestions = new ObservableCollection<string>();
+                    return;
+                }
+
+                var suggestions = candidateUsers
                     .Where(u => string.IsNullOrWhiteSpace(query) || u.Matches(query))
                     .OrderBy(u => u.Username)
                     .Take(8)
@@ -1379,6 +1392,36 @@ namespace BugCapture
             finally
             {
                 _isRefreshingMentionSuggestions = false;
+            }
+        }
+
+        private async Task<List<MattermostUserInfo>> GetCandidateMattermostUsersAsync()
+        {
+            if (!TryResolveSingleMattermostChannel(MattermostChannelTargetsText, out var selectedChannel))
+            {
+                return MattermostUsers.ToList();
+            }
+
+            if (_mattermostChannelMembersCache.TryGetValue(selectedChannel.Id, out var cachedMembers))
+            {
+                return cachedMembers;
+            }
+
+            if (!_mattermostService.IsConfigured)
+            {
+                return MattermostUsers.ToList();
+            }
+
+            try
+            {
+                var members = await _mattermostService.GetChannelMembersAsync(selectedChannel.Id);
+                _mattermostChannelMembersCache[selectedChannel.Id] = members;
+                return members;
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteException(ex, $"Mattermost channel member fetch failed | ChannelId={selectedChannel.Id}");
+                return MattermostUsers.ToList();
             }
         }
 
@@ -1425,22 +1468,7 @@ namespace BugCapture
                 var savedReference = settings.MattermostSelectedChannelReference?.Trim() ?? string.Empty;
                 if (!string.IsNullOrWhiteSpace(savedReference))
                 {
-                    var targetName = savedReference.TrimStart('#');
-                    var channel = MattermostChannels.FirstOrDefault(c =>
-                        string.Equals(c.Reference, savedReference, StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(c.Name, targetName, StringComparison.OrdinalIgnoreCase));
-
-                    if (channel != null)
-                    {
-                        var selectedItem = MattermostChannelTreeItems.FirstOrDefault(i =>
-                            !i.IsTeamHeader && i.Channel != null && string.Equals(i.Channel.Id, channel.Id, StringComparison.OrdinalIgnoreCase));
-
-                        if (selectedItem != null)
-                        {
-                            SelectedMattermostChannelTreeItem = selectedItem;
-                            MattermostChannelTargetsText = channel.Reference;
-                        }
-                    }
+                    MattermostChannelTargetsText = savedReference;
                 }
 
                 if (settings.MattermostReplyToThreadId)
@@ -1533,15 +1561,36 @@ namespace BugCapture
         {
             var requested = input
                 .Split(new[] { ',', ';', '\n', '\r', ' ' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(x => x.Trim().TrimStart('#'))
+                .Select(x => x.Trim())
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+            if (requested.Count == 0)
+            {
+                return new List<MattermostChannelInfo>();
+            }
+
             return MattermostChannels
-                .Where(c => requested.Contains(c.Name, StringComparer.OrdinalIgnoreCase)
-                         || requested.Contains(c.DisplayName, StringComparer.OrdinalIgnoreCase))
+                .Where(c => requested.Any(token =>
+                    string.Equals(token, c.Id, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(token.TrimStart('#'), c.Name, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(token, c.Reference, StringComparison.OrdinalIgnoreCase)
+                    || (!string.IsNullOrWhiteSpace(c.DisplayName) && string.Equals(token, c.DisplayName, StringComparison.OrdinalIgnoreCase))))
                 .ToList();
+        }
+
+        private bool TryResolveSingleMattermostChannel(string input, out MattermostChannelInfo channel)
+        {
+            channel = null!;
+            var channels = ResolveMattermostChannels(input);
+            if (channels.Count == 0)
+            {
+                return false;
+            }
+
+            channel = channels[0];
+            return true;
         }
 
         private List<string> ParseMentionHandles(string input)
@@ -1558,13 +1607,19 @@ namespace BugCapture
                 .ToList();
         }
 
-        private List<MattermostUserInfo> ResolveMattermostUsers(string input)
+        private async Task<List<MattermostUserInfo>> ResolveMattermostUsersAsync(string input)
         {
             var handles = ParseMentionHandles(input)
                 .Select(h => h.TrimStart('@'))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            return MattermostUsers
+            if (handles.Count == 0)
+            {
+                return new List<MattermostUserInfo>();
+            }
+
+            var candidates = await GetCandidateMattermostUsersAsync();
+            return candidates
                 .Where(u => handles.Contains(u.Username))
                 .ToList();
         }
@@ -2051,25 +2106,28 @@ namespace BugCapture
                 return false;
             }
 
-            var selectedChannel = SelectedMattermostChannelTreeItem?.Channel;
-            var shouldSendChannels = SendToMattermostChannels && selectedChannel != null;
+            var resolvedChannels = ResolveMattermostChannels(MattermostChannelTargetsText);
+            var shouldSendChannels = SendToMattermostChannels && resolvedChannels.Count > 0;
             var shouldSendUsers = MentionMattermostUsers && !string.IsNullOrWhiteSpace(MattermostMentionText);
             var threadId = ExtractMattermostPostIdFromInput(MattermostThreadId);
             var shouldReplyThread = ReplyToMattermostThreadId && !string.IsNullOrWhiteSpace(threadId);
             if (!shouldSendChannels && !shouldSendUsers && !shouldReplyThread)
             {
-                _logger.WriteLine("[Mattermost] Skip send: no channel selected, no mention users, and no thread id.");
+                _logger.WriteLine("[Mattermost] Skip send: no channel input resolved, no mention users, and no thread id.");
                 return false;
             }
 
             _logger.WriteLine($"[Mattermost] Begin send | Ready={IsMattermostReady} | Server={MattermostServerUrl} | IssueId={issueId} | Attachments={attachmentFilePaths.Count} | SendChannels={shouldSendChannels} | SendUsers={shouldSendUsers} | SendThread={shouldReplyThread}");
-            if (selectedChannel != null)
+            if (resolvedChannels.Count > 0)
             {
-                _logger.WriteLine($"[Mattermost] Selected channel | Team={selectedChannel.TeamDisplayName} ({selectedChannel.TeamName}) | Name={selectedChannel.Name} | ChannelId={selectedChannel.Id}");
+                foreach (var channel in resolvedChannels)
+                {
+                    _logger.WriteLine($"[Mattermost] Target channel | Team={channel.TeamDisplayName} ({channel.TeamName}) | Name={channel.Name} | ChannelId={channel.Id}");
+                }
             }
             else if (SendToMattermostChannels)
             {
-                _logger.WriteLine("[Mattermost] Channel send requested but SelectedMattermostChannelTreeItem is null.");
+                _logger.WriteLine($"[Mattermost] Channel send requested but no channel matched input='{MattermostChannelTargetsText}'.");
             }
 
             string redmineIssueUrl = string.Empty;
@@ -2124,12 +2182,12 @@ namespace BugCapture
 
             if (shouldSendChannels)
             {
-                channelSent = await _mattermostService.SendToChannelsAsync(new[] { selectedChannel! }, message, attachmentFilePaths, interactiveOptions);
+                channelSent = await _mattermostService.SendToChannelsAsync(resolvedChannels, message, attachmentFilePaths, interactiveOptions);
             }
 
             if (shouldSendUsers)
             {
-                var users = ResolveMattermostUsers(MattermostMentionText);
+                var users = await ResolveMattermostUsersAsync(MattermostMentionText);
                 _logger.WriteLine($"[Mattermost] Mention input='{MattermostMentionText}' | Resolved users={users.Count}");
                 if (users.Count > 0)
                 {

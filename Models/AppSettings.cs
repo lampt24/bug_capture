@@ -8,8 +8,9 @@ namespace BugCapture.Models
 
         public string RedmineUrl { get; set; } = "http://localhost:3000/";
         public string RedmineApiKey { get; set; } = string.Empty;
-        public string MattermostServerUrl { get; set; } = string.Empty;
-        public string MattermostAccessToken { get; set; } = string.Empty;
+        public string MattermostServerUrl { get; set; } = "http://172.16.6.131:8065/";
+        public string MattermostBotAccessToken { get; set; } = "bo11zc5xw3gx7ntyy9kurm5tdr";
+        public string MattermostAccessToken { get; set; } = "bo11zc5xw3gx7ntyy9kurm5tdr";
         public bool MattermostSendToChannels { get; set; } = true;
         public bool MattermostMentionUsers { get; set; }
         public bool MattermostReplyToThreadId { get; set; }

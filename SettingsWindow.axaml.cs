@@ -38,7 +38,12 @@ namespace BugCapture
             if (urlBox != null) urlBox.Text = CurrentSettings.RedmineUrl;
             if (keyBox != null) keyBox.Text = CurrentSettings.RedmineApiKey;
             if (mattermostUrlBox != null) mattermostUrlBox.Text = CurrentSettings.MattermostServerUrl;
-            if (mattermostTokenBox != null) mattermostTokenBox.Text = CurrentSettings.MattermostAccessToken;
+            if (mattermostTokenBox != null)
+            {
+                mattermostTokenBox.Text = string.IsNullOrWhiteSpace(CurrentSettings.MattermostBotAccessToken)
+                    ? CurrentSettings.MattermostAccessToken
+                    : CurrentSettings.MattermostBotAccessToken;
+            }
             if (autoUpdateEnabledCheckBox != null) autoUpdateEnabledCheckBox.IsChecked = CurrentSettings.AutoUpdateEnabled;
             if (autoUpdateFeedUrlTextBox != null) autoUpdateFeedUrlTextBox.Text = CurrentSettings.AutoUpdateFeedUrl;
             if (openEditorAfterCaptureCheckBox != null) openEditorAfterCaptureCheckBox.IsChecked = CurrentSettings.OpenEditorAfterCapture;
@@ -67,7 +72,9 @@ namespace BugCapture
             CurrentSettings.RedmineUrl = urlBox.Text.Trim();
             CurrentSettings.RedmineApiKey = keyBox.Text.Trim();
             CurrentSettings.MattermostServerUrl = mattermostUrlBox?.Text?.Trim() ?? string.Empty;
-            CurrentSettings.MattermostAccessToken = mattermostTokenBox?.Text?.Trim() ?? string.Empty;
+            var mattermostBotToken = mattermostTokenBox?.Text?.Trim() ?? string.Empty;
+            CurrentSettings.MattermostBotAccessToken = mattermostBotToken;
+            CurrentSettings.MattermostAccessToken = mattermostBotToken;
             CurrentSettings.AutoUpdateEnabled = autoUpdateEnabledCheckBox?.IsChecked ?? true;
             var autoUpdateFeedUrl = autoUpdateFeedUrlTextBox?.Text?.Trim() ?? string.Empty;
             CurrentSettings.AutoUpdateFeedUrl = string.IsNullOrWhiteSpace(autoUpdateFeedUrl)

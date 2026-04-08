@@ -400,10 +400,10 @@
 			</Border>
 
 			<!-- ╔══════════════ MAIN CONTENT ══════════════╗ -->
-			<Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="12,0,12,6">
+			<Grid Grid.Row="1" RowDefinitions="*,Auto" Margin="12,0,12,6">
 
 				<!-- ── Row 0: Bug Description ── -->
-				<Grid Grid.Row="0" Margin="0,10,0,15" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+				<Grid Grid.Row="0" Margin="0,10,0,15" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto">
 					<!-- Combined Redmine Row (Project, Tracker) -->
 					<TextBlock Grid.Row="0" Grid.Column="0" Classes="card-label" Text="PROJECT" Width="100" Margin="0,0,12,10" VerticalAlignment="Center" />
 					<Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto,*" Margin="0,0,0,10">
@@ -458,8 +458,8 @@
 					<!-- Description Row -->
 					<TextBlock Grid.Row="2" Grid.Column="0" Classes="card-label" Text="MÔ TẢ BUG" Width="100" Margin="0,4,12,10" VerticalAlignment="Top" />
 					<TextBox Grid.Row="2" Grid.Column="1" x:Name="BugDescriptionTextBox" Text="{Binding BugDescription}"
-							 AcceptsReturn="True" TextWrapping="Wrap" Height="120" Margin="0,0,0,10"
-							 VerticalAlignment="Top" VerticalContentAlignment="Top"
+							 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" Margin="0,0,0,10"
+							 VerticalAlignment="Stretch" VerticalContentAlignment="Top"
 							 DragDrop.AllowDrop="True"
 							 Watermark="Mô tả chi tiết: bước tái hiện, kết quả mong đợi, kết quả thực tế..." />
 
@@ -582,7 +582,7 @@
 				</Grid>
 
 				<!-- ── Row 1: Mattermost + Actions + Gallery + Editor ── -->
-				<Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,*" Margin="0">
+				<Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto" Margin="0">
 					<!-- Mattermost (below Redmine, above action buttons) -->
 					<Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1" Padding="0,8" Margin="0,0,0,8">
 						<Grid ColumnDefinitions="100,*" ColumnSpacing="12">
@@ -595,21 +595,14 @@
 											 VerticalAlignment="Center"
 											 FontSize="12" />
 
-								<ComboBox Grid.Row="0" Grid.Column="1"
-										  ItemsSource="{Binding MattermostChannelTreeItems}"
-										  SelectedItem="{Binding SelectedMattermostChannelTreeItem}"
-										  SelectionChanged="OnMattermostChannelTreeSelectionChanged"
-										  IsEnabled="{Binding SendToMattermostChannels}"
-									  HorizontalAlignment="Stretch"
-									  MinWidth="220"
-										  Height="32"
-										  PlaceholderText="Chọn channel theo team...">
-									<ComboBox.ItemTemplate>
-										<DataTemplate>
-											<TextBlock Text="{Binding DisplayName}" FontSize="12" />
-										</DataTemplate>
-									</ComboBox.ItemTemplate>
-								</ComboBox>
+								<TextBox Grid.Row="0" Grid.Column="1"
+										 Text="{Binding MattermostChannelTargetsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+										 IsEnabled="{Binding SendToMattermostChannels}"
+										 HorizontalAlignment="Stretch"
+										 MinWidth="220"
+										 Height="32"
+										 FontSize="11"
+										 Watermark="#channel-name hoặc channel-id (ví dụ: #town-square)" />
 
 								<RadioButton Grid.Row="0" Grid.Column="2" Content="TO THREAD"
 										 IsChecked="{Binding ReplyToMattermostThreadId}"

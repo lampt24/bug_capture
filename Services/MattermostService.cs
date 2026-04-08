@@ -56,31 +56,50 @@ namespace BugCapture.Services
       EnsureConfigured();
 
       var me = await GetCurrentUserAsync();
+      EnsureBotAccount(me);
       _currentUserId = me.Id;
       _currentUsername = me.Username;
 
-      var teams = await GetMyTeamsAsync();
+      var teamsById = await TryGetMyTeamsLookupAsync();
+      var myChannels = await GetMyChannelsAsync();
       var channels = new Dictionary<string, MattermostChannelInfo>(StringComparer.OrdinalIgnoreCase);
       var users = new Dictionary<string, MattermostUserInfo>(StringComparer.OrdinalIgnoreCase);
 
-      foreach (var team in teams)
+      foreach (var channel in myChannels)
       {
-        var teamChannels = await GetMyChannelsAsync(team);
-        foreach (var channel in teamChannels)
+        if (string.IsNullOrWhiteSpace(channel.Id) || string.IsNullOrWhiteSpace(channel.Name))
         {
-          channels[channel.Id] = channel;
+          continue;
         }
 
+        var channelTeamId = channel.TeamId ?? string.Empty;
+        teamsById.TryGetValue(channelTeamId, out var teamInfo);
+        var hasTeamInfo = !string.IsNullOrWhiteSpace(channelTeamId) && teamInfo != null;
+        channels[channel.Id] = new MattermostChannelInfo
+        {
+          Id = channel.Id,
+          TeamId = channelTeamId,
+          TeamName = hasTeamInfo ? teamInfo.Name ?? string.Empty : channelTeamId,
+          TeamDisplayName = hasTeamInfo
+              ? (string.IsNullOrWhiteSpace(teamInfo.DisplayName) ? teamInfo.Name ?? string.Empty : teamInfo.DisplayName)
+              : channelTeamId,
+          Name = channel.Name,
+          DisplayName = channel.DisplayName ?? string.Empty
+        };
+      }
+
+      foreach (var channel in channels.Values)
+      {
         int page = 0;
         while (true)
         {
-          var teamUsers = await GetUsersByTeamAsync(team.Id, page, 200);
-          if (teamUsers.Count == 0)
+          var channelUsers = await TryGetUsersByChannelAsync(channel.Id, page, 200);
+          if (channelUsers == null || channelUsers.Count == 0)
           {
             break;
           }
 
-          foreach (var user in teamUsers)
+          foreach (var user in channelUsers)
           {
             if (!string.Equals(user.Id, _currentUserId, StringComparison.OrdinalIgnoreCase))
             {
@@ -190,6 +209,40 @@ namespace BugCapture.Services
       return _currentUsername ?? string.Empty;
     }
 
+    public async Task<List<MattermostUserInfo>> GetChannelMembersAsync(string channelId)
+    {
+      EnsureConfigured();
+
+      if (string.IsNullOrWhiteSpace(channelId))
+      {
+        return new List<MattermostUserInfo>();
+      }
+
+      var users = new Dictionary<string, MattermostUserInfo>(StringComparer.OrdinalIgnoreCase);
+      int page = 0;
+
+      while (true)
+      {
+        var pageUsers = await TryGetUsersByChannelAsync(channelId.Trim(), page, 200);
+        if (pageUsers == null || pageUsers.Count == 0)
+        {
+          break;
+        }
+
+        foreach (var user in pageUsers)
+        {
+          if (!string.IsNullOrWhiteSpace(user.Id))
+          {
+            users[user.Id] = user;
+          }
+        }
+
+        page++;
+      }
+
+      return users.Values.OrderBy(u => u.Username).ToList();
+    }
+
     private async Task EnsureCurrentUserIdAsync()
     {
       if (!string.IsNullOrWhiteSpace(_currentUserId))
@@ -198,8 +251,17 @@ namespace BugCapture.Services
       }
 
       var me = await GetCurrentUserAsync();
+      EnsureBotAccount(me);
       _currentUserId = me.Id;
       _currentUsername = me.Username;
+    }
+
+    private static void EnsureBotAccount(MattermostUserDto user)
+    {
+      if (!user.IsBot)
+      {
+        throw new InvalidOperationException("Mattermost token hiện tại không thuộc BOT account. Vui lòng dùng BOT access token để gửi tin nhắn.");
+      }
     }
 
     private void EnsureConfigured()
@@ -236,43 +298,60 @@ namespace BugCapture.Services
       return await DeserializeAsync<List<MattermostTeamDto>>(response);
     }
 
-    private async Task<List<MattermostChannelInfo>> GetMyChannelsAsync(MattermostTeamDto team)
+    private async Task<Dictionary<string, MattermostTeamDto>> TryGetMyTeamsLookupAsync()
     {
-      using var response = await _httpClient.GetAsync(BuildApiUrl($"/api/v4/users/me/teams/{team.Id}/channels"));
-      await EnsureSuccessAsync(response);
-      var channels = await DeserializeAsync<List<MattermostChannelDto>>(response);
-
-      return channels
-          .Where(c => !string.IsNullOrWhiteSpace(c.Id) && !string.IsNullOrWhiteSpace(c.Name))
-          .Select(c => new MattermostChannelInfo
-          {
-            Id = c.Id,
-            TeamId = c.TeamId ?? string.Empty,
-            TeamName = team.Name ?? string.Empty,
-            TeamDisplayName = string.IsNullOrWhiteSpace(team.DisplayName) ? (team.Name ?? string.Empty) : team.DisplayName,
-            Name = c.Name,
-            DisplayName = c.DisplayName ?? string.Empty
-          })
-          .ToList();
+      try
+      {
+        var teams = await GetMyTeamsAsync();
+        return teams
+            .Where(t => !string.IsNullOrWhiteSpace(t.Id))
+            .ToDictionary(t => t.Id, StringComparer.OrdinalIgnoreCase);
+      }
+      catch (HttpRequestException ex) when (IsForbidden(ex))
+      {
+        return new Dictionary<string, MattermostTeamDto>(StringComparer.OrdinalIgnoreCase);
+      }
     }
 
-    private async Task<List<MattermostUserInfo>> GetUsersByTeamAsync(string teamId, int page, int perPage)
+    private async Task<List<MattermostChannelDto>> GetMyChannelsAsync()
     {
-      using var response = await _httpClient.GetAsync(BuildApiUrl($"/api/v4/users?in_team={teamId}&page={page}&per_page={perPage}"));
+      using var response = await _httpClient.GetAsync(BuildApiUrl("/api/v4/users/me/channels"));
       await EnsureSuccessAsync(response);
-      var users = await DeserializeAsync<List<MattermostUserDto>>(response);
+      return await DeserializeAsync<List<MattermostChannelDto>>(response);
+    }
 
-      return users
-          .Where(u => !string.IsNullOrWhiteSpace(u.Id) && !string.IsNullOrWhiteSpace(u.Username))
-          .Select(u => new MattermostUserInfo
-          {
-            Id = u.Id,
-            Username = u.Username,
-            FirstName = u.FirstName ?? string.Empty,
-            LastName = u.LastName ?? string.Empty,
-            Nickname = u.Nickname ?? string.Empty
-          })
-          .ToList();
+    private async Task<List<MattermostUserInfo>?> TryGetUsersByChannelAsync(string channelId, int page, int perPage)
+    {
+      try
+      {
+        using var response = await _httpClient.GetAsync(BuildApiUrl($"/api/v4/users?in_channel={channelId}&page={page}&per_page={perPage}"));
+        await EnsureSuccessAsync(response);
+        var users = await DeserializeAsync<List<MattermostUserDto>>(response);
+
+        return users
+            .Where(u => !string.IsNullOrWhiteSpace(u.Id) && !string.IsNullOrWhiteSpace(u.Username))
+            .Select(u => new MattermostUserInfo
+            {
+              Id = u.Id,
+              Username = u.Username,
+              FirstName = u.FirstName ?? string.Empty,
+              LastName = u.LastName ?? string.Empty,
+              Nickname = u.Nickname ?? string.Empty
+            })
+            .ToList();
+      }
+      catch (HttpRequestException ex) when (IsForbidden(ex))
+      {
+        return null;
+      }
+    }
+
+    private static bool IsForbidden(HttpRequestException ex)
+    {
+      var message = ex.Message ?? string.Empty;
+      return message.Contains(" 403", StringComparison.Ordinal)
+          || message.Contains("error 403", StringComparison.OrdinalIgnoreCase)
+          || message.Contains("status_code\":403", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<List<string>> UploadFilesToChannelAsync(string channelId, IEnumerable<string> filePaths)
@@ -341,11 +420,7 @@ namespace BugCapture.Services
         return null;
       }
 
-      var assignee = string.IsNullOrWhiteSpace(options.Assignee) ? "Unassigned" : options.Assignee;
-      var fields = new List<MattermostAttachmentFieldDto>
-      {
-        new MattermostAttachmentFieldDto { Title = "Assignee", Value = assignee, Short = true }
-      };
+      var fields = new List<MattermostAttachmentFieldDto>();
 
       if (!string.IsNullOrWhiteSpace(options.RedmineUrl))
       {
@@ -449,6 +524,8 @@ namespace BugCapture.Services
     {
       public string Id { get; set; } = string.Empty;
       public string Username { get; set; } = string.Empty;
+      [JsonPropertyName("is_bot")]
+      public bool IsBot { get; set; }
       [JsonPropertyName("first_name")]
       public string? FirstName { get; set; }
       [JsonPropertyName("last_name")]
