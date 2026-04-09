@@ -23,6 +23,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.Text;
 using System.Threading;
+using System.IO;
 
 namespace BugCapture
 {
@@ -39,6 +40,10 @@ namespace BugCapture
         {
             ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tif", ".tiff"
         };
+        private static readonly HashSet<string> NonEditableImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".gif"
+        };
         private bool _isInitialized = false;
         private int _evidenceCounter = 1;
         private string _statusText = "Ready";
@@ -51,7 +56,15 @@ namespace BugCapture
         private string _whoMiss = string.Empty;
         private string _moduleId = string.Empty;
         private CapturedImage? _currentlyEditingImage;
+        private CapturedImage? _currentlyPreviewingImage;
         private bool _isEditorVisible = false;
+        private bool _isMediaPreviewVisible = false;
+        private Avalonia.Media.Imaging.Bitmap? _mediaPreviewImage;
+        private string _mediaPreviewTitle = string.Empty;
+        private readonly List<Avalonia.Media.Imaging.Bitmap> _gifPreviewFrames = new();
+        private readonly List<int> _gifPreviewFrameDelayMilliseconds = new();
+        private DispatcherTimer? _gifPreviewTimer;
+        private int _gifPreviewFrameIndex;
         private double? _windowHeightBeforeEditor;
         private string _currentDateTime = string.Empty;
         private System.Threading.Timer? _clockTimer;
@@ -118,8 +131,13 @@ namespace BugCapture
         private CapturedImage? _thumbnailDragSource;
         private Button? _thumbnailDragOriginButton;
         private bool _isThumbnailDragInProgress;
+        private int _gifRenderInProgressCount;
         private const string ThumbnailDragDataPrefix = "BUGCAPTURE_THUMBNAIL:";
         private const string ThumbnailDragDataFormat = "application/x-bugcapture-thumbnail-index";
+        private const int GifPropertyTagFrameDelay = 0x5100;
+        private const int GifFrameDelayUnitMilliseconds = 10;
+        private const int DefaultGifFrameDelayMilliseconds = 100;
+        private const int MinimumGifFrameDelayMilliseconds = 20;
 
         public ObservableCollection<CapturedImage> CapturedImages { get; } = new ObservableCollection<CapturedImage>();
         public MainViewModel EditorViewModel { get; } = new MainViewModel();
@@ -183,6 +201,8 @@ namespace BugCapture
             set { _statusText = value; OnPropertyChanged(nameof(StatusText)); }
         }
 
+        public bool IsGifCaptureEnabled => _gifRenderInProgressCount == 0;
+
         public bool IsEditorVisible
         {
             get => _isEditorVisible;
@@ -208,6 +228,41 @@ namespace BugCapture
                 }
 
                 Dispatcher.UIThread.Post(RestoreWindowHeightAfterEditorHidden, DispatcherPriority.Loaded);
+            }
+        }
+
+        public bool IsMediaPreviewVisible
+        {
+            get => _isMediaPreviewVisible;
+            set
+            {
+                if (_isMediaPreviewVisible == value)
+                {
+                    return;
+                }
+
+                _isMediaPreviewVisible = value;
+                OnPropertyChanged(nameof(IsMediaPreviewVisible));
+            }
+        }
+
+        public Avalonia.Media.Imaging.Bitmap? MediaPreviewImage
+        {
+            get => _mediaPreviewImage;
+            private set
+            {
+                _mediaPreviewImage = value;
+                OnPropertyChanged(nameof(MediaPreviewImage));
+            }
+        }
+
+        public string MediaPreviewTitle
+        {
+            get => _mediaPreviewTitle;
+            private set
+            {
+                _mediaPreviewTitle = value;
+                OnPropertyChanged(nameof(MediaPreviewTitle));
             }
         }
 
@@ -3193,6 +3248,84 @@ namespace BugCapture
             }
         }
 
+        public async void OnCaptureGifClick(object sender, RoutedEventArgs e)
+        {
+            if (!IsGifCaptureEnabled)
+            {
+                StatusText = "A GIF is still rendering. Please wait.";
+                return;
+            }
+
+            _logger.WriteLine("User Clicked: Capture GIF");
+            this.Hide();
+            await System.Threading.Tasks.Task.Delay(250);
+            try
+            {
+                var pendingResult = await _captureService.CaptureGif();
+
+                if (pendingResult != null)
+                {
+                    var pendingImage = pendingResult.PendingImage;
+                    pendingImage.CaptureType = $"GIF_No.{_evidenceCounter++:D2}";
+                    pendingImage.IsRendering = true;
+                    CapturedImages.Add(pendingImage);
+                    OnThumbnailClickInternal(pendingImage, forceShowEditor: false);
+                    _gifRenderInProgressCount++;
+                    OnPropertyChanged(nameof(IsGifCaptureEnabled));
+                    StatusText = $"Rendering {pendingImage.CaptureType}...";
+
+                    _ = CompletePendingGifCaptureAsync(pendingImage, pendingResult.RenderTask);
+                }
+            }
+            finally
+            {
+                this.Show();
+                this.Activate();
+            }
+        }
+
+        private async Task CompletePendingGifCaptureAsync(CapturedImage pendingImage, Task renderTask)
+        {
+            try
+            {
+                await renderTask;
+
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (!System.IO.File.Exists(pendingImage.FilePath))
+                    {
+                        pendingImage.IsRendering = false;
+                        StatusText = $"GIF render failed: file not found for {pendingImage.CaptureType}.";
+                        return;
+                    }
+
+                    using var stream = System.IO.File.OpenRead(pendingImage.FilePath);
+                    pendingImage.Thumbnail = new Avalonia.Media.Imaging.Bitmap(stream);
+                    pendingImage.IsRendering = false;
+                    StatusText = $"Rendered {pendingImage.CaptureType}.";
+                });
+            }
+            catch (Exception ex)
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    pendingImage.IsRendering = false;
+                    StatusText = $"GIF render error: {ex.Message}";
+                });
+            }
+            finally
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (_gifRenderInProgressCount > 0)
+                    {
+                        _gifRenderInProgressCount--;
+                        OnPropertyChanged(nameof(IsGifCaptureEnabled));
+                    }
+                });
+            }
+        }
+
         public async void OnAddAttachmentClick(object sender, RoutedEventArgs e)
         {
             if (StorageProvider == null)
@@ -3293,6 +3426,12 @@ namespace BugCapture
         public void OnCloseFullscreenEditorClick(object sender, RoutedEventArgs e)
         {
             IsEditorVisible = false;
+            if (IsMediaPreviewVisible)
+            {
+                StopGifPreviewAnimation(clearFrames: false);
+            }
+
+            IsMediaPreviewVisible = false;
         }
 
         public void OnDeleteImageClick(object sender, RoutedEventArgs e)
@@ -3309,7 +3448,73 @@ namespace BugCapture
                     EditorViewModel.ImageDimensions = "No image";
                     EditorViewModel.IsDirty = false;
                 }
+
+                if (_currentlyPreviewingImage == image)
+                {
+                    _currentlyPreviewingImage = null;
+                    MediaPreviewImage = null;
+                    MediaPreviewTitle = string.Empty;
+                    IsMediaPreviewVisible = false;
+                }
+
                 CapturedImages.Remove(image);
+            }
+        }
+
+        public void OnOpenThumbnailFileLocationClick(object? sender, RoutedEventArgs e)
+        {
+            CapturedImage? image = null;
+
+            if (sender is MenuItem menuItem)
+            {
+                image = menuItem.CommandParameter as CapturedImage ?? menuItem.DataContext as CapturedImage;
+            }
+
+            if (image == null || string.IsNullOrWhiteSpace(image.FilePath))
+            {
+                StatusText = "No file location available.";
+                return;
+            }
+
+            try
+            {
+                if (System.IO.File.Exists(image.FilePath))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"/select,\"{image.FilePath}\"",
+                        UseShellExecute = true
+                    });
+                    return;
+                }
+
+                if (System.IO.Directory.Exists(image.FilePath))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = image.FilePath,
+                        UseShellExecute = true
+                    });
+                    return;
+                }
+
+                var directoryPath = System.IO.Path.GetDirectoryName(image.FilePath);
+                if (!string.IsNullOrWhiteSpace(directoryPath) && System.IO.Directory.Exists(directoryPath))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = directoryPath,
+                        UseShellExecute = true
+                    });
+                    return;
+                }
+
+                StatusText = "File location not found.";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Cannot open file location: {ex.Message}";
             }
         }
 
@@ -3792,13 +3997,33 @@ namespace BugCapture
         {
             if (image == null) return;
 
+            if (image.IsRendering)
+            {
+                StatusText = $"{image.CaptureType} is rendering...";
+                return;
+            }
+
+            bool canOpenInEditor = IsEditorCompatibleImage(image);
+            bool canOpenInPreview = IsPreviewCompatibleImage(image);
+
             // Re-clicking the same opened image should be a no-op.
-            if (ReferenceEquals(_currentlyEditingImage, image) && image.IsImage)
+            if (ReferenceEquals(_currentlyEditingImage, image) && canOpenInEditor)
             {
                 if (forceShowEditor && !IsEditorVisible)
                 {
                     IsEditorVisible = true;
                 }
+                return;
+            }
+
+            if (ReferenceEquals(_currentlyPreviewingImage, image) && canOpenInPreview)
+            {
+                if (forceShowEditor && !IsMediaPreviewVisible)
+                {
+                    StartGifPreviewAnimationIfAvailable();
+                    IsMediaPreviewVisible = true;
+                }
+
                 return;
             }
 
@@ -3823,18 +4048,35 @@ namespace BugCapture
                 item.IsSelected = (item == image);
             }
 
-            if (!image.IsImage)
+            if (canOpenInPreview)
             {
+                OpenMediaPreview(image, forceShowEditor);
+                return;
+            }
+
+            if (!canOpenInEditor)
+            {
+                StopGifPreviewAnimation(clearFrames: true);
                 _currentlyEditingImage = null;
+                _currentlyPreviewingImage = null;
                 IsEditorVisible = false;
+                IsMediaPreviewVisible = false;
                 EditorViewModel.ClearCommand.Execute(null);
                 EditorViewModel.PreviewImage = null;
                 EditorViewModel.ImageFilePath = null;
                 EditorViewModel.ImageDimensions = "No image";
                 EditorViewModel.IsDirty = false;
+                MediaPreviewImage = null;
+                MediaPreviewTitle = string.Empty;
                 StatusText = $"Selected attachment: {image.CaptureType}";
                 return;
             }
+
+            IsMediaPreviewVisible = false;
+            StopGifPreviewAnimation(clearFrames: true);
+            _currentlyPreviewingImage = null;
+            MediaPreviewImage = null;
+            MediaPreviewTitle = string.Empty;
 
             if (forceShowEditor)
             {
@@ -3875,6 +4117,200 @@ namespace BugCapture
                 StatusText = $"Error loading editor: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine($"Failed to load image in editor: {ex.Message}");
             }
+        }
+
+        private void OpenMediaPreview(CapturedImage image, bool forceShowPreview)
+        {
+            _currentlyEditingImage = null;
+            IsEditorVisible = false;
+            EditorViewModel.ClearCommand.Execute(null);
+            EditorViewModel.PreviewImage = null;
+            EditorViewModel.ImageFilePath = null;
+            EditorViewModel.ImageDimensions = "No image";
+            EditorViewModel.IsDirty = false;
+            StopGifPreviewAnimation(clearFrames: true);
+
+            try
+            {
+                if (!System.IO.File.Exists(image.FilePath))
+                {
+                    StatusText = "Preview error: File not found.";
+                    return;
+                }
+
+                if (IsGifFilePath(image.FilePath))
+                {
+                    LoadGifPreviewFrames(image.FilePath);
+                    if (_gifPreviewFrames.Count == 0)
+                    {
+                        StatusText = "Preview error: GIF has no frames.";
+                        return;
+                    }
+
+                    _gifPreviewFrameIndex = 0;
+                    MediaPreviewImage = _gifPreviewFrames[0];
+                    StartGifPreviewAnimationIfAvailable();
+                }
+                else
+                {
+                    using (var stream = System.IO.File.OpenRead(image.FilePath))
+                    {
+                        MediaPreviewImage = new Avalonia.Media.Imaging.Bitmap(stream);
+                    }
+                }
+
+                _currentlyPreviewingImage = image;
+                MediaPreviewTitle = image.CaptureType;
+
+                if (forceShowPreview)
+                {
+                    IsMediaPreviewVisible = true;
+                }
+
+                StatusText = $"Previewing {image.CaptureType}...";
+            }
+            catch (Exception ex)
+            {
+                StopGifPreviewAnimation(clearFrames: true);
+                _currentlyPreviewingImage = null;
+                MediaPreviewImage = null;
+                MediaPreviewTitle = string.Empty;
+                IsMediaPreviewVisible = false;
+                StatusText = $"Preview error: {ex.Message}";
+            }
+        }
+
+        private void LoadGifPreviewFrames(string filePath)
+        {
+            StopGifPreviewAnimation(clearFrames: true);
+
+            using var gifImage = System.Drawing.Image.FromFile(filePath, useEmbeddedColorManagement: false);
+            var frameDimension = new System.Drawing.Imaging.FrameDimension(gifImage.FrameDimensionsList[0]);
+            int frameCount = gifImage.GetFrameCount(frameDimension);
+
+            var frameDelays = ReadGifFrameDelays(gifImage, frameCount);
+
+            for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
+            {
+                gifImage.SelectActiveFrame(frameDimension, frameIndex);
+
+                using var frameBitmap = new System.Drawing.Bitmap(gifImage.Width, gifImage.Height);
+                using (var graphics = System.Drawing.Graphics.FromImage(frameBitmap))
+                {
+                    graphics.DrawImage(gifImage, 0, 0, gifImage.Width, gifImage.Height);
+                }
+
+                using var frameStream = new MemoryStream();
+                frameBitmap.Save(frameStream, System.Drawing.Imaging.ImageFormat.Png);
+                frameStream.Position = 0;
+
+                _gifPreviewFrames.Add(new Avalonia.Media.Imaging.Bitmap(frameStream));
+                _gifPreviewFrameDelayMilliseconds.Add(frameDelays[frameIndex]);
+            }
+        }
+
+        private void StartGifPreviewAnimationIfAvailable()
+        {
+            if (_gifPreviewFrames.Count <= 1)
+            {
+                return;
+            }
+
+            _gifPreviewTimer ??= new DispatcherTimer();
+            _gifPreviewTimer.Tick -= OnGifPreviewTimerTick;
+            _gifPreviewTimer.Tick += OnGifPreviewTimerTick;
+            _gifPreviewTimer.Interval = TimeSpan.FromMilliseconds(_gifPreviewFrameDelayMilliseconds[_gifPreviewFrameIndex]);
+            _gifPreviewTimer.Start();
+        }
+
+        private void OnGifPreviewTimerTick(object? sender, EventArgs e)
+        {
+            if (_gifPreviewFrames.Count == 0)
+            {
+                StopGifPreviewAnimation(clearFrames: false);
+                return;
+            }
+
+            _gifPreviewFrameIndex = (_gifPreviewFrameIndex + 1) % _gifPreviewFrames.Count;
+            MediaPreviewImage = _gifPreviewFrames[_gifPreviewFrameIndex];
+
+            if (_gifPreviewTimer != null && _gifPreviewFrameDelayMilliseconds.Count == _gifPreviewFrames.Count)
+            {
+                _gifPreviewTimer.Interval = TimeSpan.FromMilliseconds(_gifPreviewFrameDelayMilliseconds[_gifPreviewFrameIndex]);
+            }
+        }
+
+        private void StopGifPreviewAnimation(bool clearFrames)
+        {
+            if (_gifPreviewTimer != null)
+            {
+                _gifPreviewTimer.Stop();
+                _gifPreviewTimer.Tick -= OnGifPreviewTimerTick;
+            }
+
+            if (!clearFrames)
+            {
+                return;
+            }
+
+            foreach (var frame in _gifPreviewFrames)
+            {
+                frame.Dispose();
+            }
+
+            _gifPreviewFrames.Clear();
+            _gifPreviewFrameDelayMilliseconds.Clear();
+            _gifPreviewFrameIndex = 0;
+        }
+
+        private static List<int> ReadGifFrameDelays(System.Drawing.Image gifImage, int frameCount)
+        {
+            var delays = Enumerable.Repeat(DefaultGifFrameDelayMilliseconds, frameCount).ToList();
+
+            if (!gifImage.PropertyIdList.Contains(GifPropertyTagFrameDelay))
+            {
+                return delays;
+            }
+
+            var frameDelayProperty = gifImage.GetPropertyItem(GifPropertyTagFrameDelay);
+            var delayBytes = frameDelayProperty.Value;
+            int availableDelays = Math.Min(frameCount, delayBytes.Length / 4);
+
+            for (int i = 0; i < availableDelays; i++)
+            {
+                int frameDelayUnits = BitConverter.ToInt32(delayBytes, i * 4);
+                int frameDelayMilliseconds = frameDelayUnits * GifFrameDelayUnitMilliseconds;
+                delays[i] = Math.Max(MinimumGifFrameDelayMilliseconds, frameDelayMilliseconds);
+            }
+
+            return delays;
+        }
+
+        private static bool IsGifFilePath(string filePath)
+        {
+            return string.Equals(System.IO.Path.GetExtension(filePath), ".gif", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsEditorCompatibleImage(CapturedImage image)
+        {
+            if (!image.IsImage)
+            {
+                return false;
+            }
+
+            var extension = System.IO.Path.GetExtension(image.FilePath);
+            return !NonEditableImageExtensions.Contains(extension);
+        }
+
+        private static bool IsPreviewCompatibleImage(CapturedImage image)
+        {
+            if (!image.IsImage)
+            {
+                return false;
+            }
+
+            var extension = System.IO.Path.GetExtension(image.FilePath);
+            return NonEditableImageExtensions.Contains(extension);
         }
 
         private CapturedImage? CreateAttachmentFromFile(string filePath)

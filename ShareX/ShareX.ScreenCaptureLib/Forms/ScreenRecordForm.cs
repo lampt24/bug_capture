@@ -35,6 +35,9 @@ namespace ShareX.ScreenCaptureLib
 {
     public partial class ScreenRecordForm : Form
     {
+        private const int PassiveExStyleTransparent = 0x00000020;
+        private const int PassiveExStyleNoActivate = 0x08000000;
+
         public event Action StopRequested;
 
         private ScreenRecordingStatus status;
@@ -59,6 +62,7 @@ namespace ShareX.ScreenCaptureLib
         public bool ActivateWindow { get; set; } = true;
         public float Duration { get; set; } = 0;
         public bool AskConfirmationOnAbort { get; set; } = false;
+        public bool PassiveOverlayMode { get; }
 
         public Rectangle RecordingRegion
         {
@@ -72,7 +76,7 @@ namespace ShareX.ScreenCaptureLib
         {
             get
             {
-                return !ActivateWindow;
+                return PassiveOverlayMode || !ActivateWindow;
             }
         }
 
@@ -82,6 +86,13 @@ namespace ShareX.ScreenCaptureLib
             {
                 CreateParams createParams = base.CreateParams;
                 createParams.ExStyle |= (int)(WindowStyles.WS_EX_TOPMOST | WindowStyles.WS_EX_TOOLWINDOW);
+
+                if (PassiveOverlayMode)
+                {
+                    createParams.ExStyle |= PassiveExStyleTransparent;
+                    createParams.ExStyle |= PassiveExStyleNoActivate;
+                }
+
                 return createParams;
             }
         }
@@ -94,8 +105,10 @@ namespace ShareX.ScreenCaptureLib
         private static int lastIconStatus = -1;
         private const int panelOffset = 3;
 
-        public ScreenRecordForm(Rectangle regionRectangle)
+        public ScreenRecordForm(Rectangle regionRectangle, bool passiveOverlayMode = false)
         {
+            PassiveOverlayMode = passiveOverlayMode;
+
             InitializeComponent();
             ShareXResources.ApplyTheme(this);
             niTray.Icon = ShareXResources.Icon;
@@ -127,6 +140,23 @@ namespace ShareX.ScreenCaptureLib
             RecordResetEvent = new ManualResetEvent(false);
 
             ChangeState(ScreenRecordState.Waiting);
+
+            if (PassiveOverlayMode)
+            {
+                ApplyPassiveOverlayLayout();
+            }
+        }
+
+        private void ApplyPassiveOverlayLayout()
+        {
+            pInfo.Visible = false;
+            int windowWidth = borderRectangle.Width;
+            int windowHeight = borderRectangle.Height;
+            Size = new Size(windowWidth, windowHeight);
+
+            Region region = new Region(new Rectangle(0, 0, windowWidth, windowHeight));
+            region.Exclude(borderRectangle0Based.Offset(-1));
+            Region = region;
         }
 
         protected override void Dispose(bool disposing)
@@ -378,6 +408,22 @@ namespace ShareX.ScreenCaptureLib
 
                 lastIconStatus = progress;
             }
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape)
+            {
+                if (Status == ScreenRecordingStatus.Working
+                    || Status == ScreenRecordingStatus.Recording
+                    || Status == ScreenRecordingStatus.Paused)
+                {
+                    StartStopRecording();
+                    return true;
+                }
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         protected override void OnPaint(PaintEventArgs e)

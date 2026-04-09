@@ -10,6 +10,7 @@ namespace BugCapture.Models
         private string _captureType = string.Empty;
         private string _fileTypeIconData = string.Empty;
         private string _fileExtensionDisplay = string.Empty;
+        private bool _isRendering;
 
         private bool _isSelected;
         public string FilePath { get; set; } = string.Empty;
@@ -45,6 +46,12 @@ namespace BugCapture.Models
         {
             get => _fileExtensionDisplay;
             set { _fileExtensionDisplay = value; OnPropertyChanged(nameof(FileExtensionDisplay)); }
+        }
+
+        public bool IsRendering
+        {
+            get => _isRendering;
+            set { _isRendering = value; OnPropertyChanged(nameof(IsRendering)); }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

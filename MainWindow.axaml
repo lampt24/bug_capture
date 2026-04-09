@@ -733,6 +733,12 @@
 									<TextBlock Text="SCROLL CAPTURE" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
 								</StackPanel>
 							</Button>
+							<Button Classes="dash-btn primary-action-btn" Click="OnCaptureGifClick" IsEnabled="{Binding IsGifCaptureEnabled}" Width="160" HorizontalAlignment="Center" Height="42" Padding="12,6,12,6" Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+								<StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="4">
+									<PathIcon Data="{StaticResource Icon.Gif}" Width="18" Height="18" HorizontalAlignment="Center" Foreground="White" />
+									<TextBlock Text="GIF CAPTURE" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
+								</StackPanel>
+							</Button>
 						</StackPanel>
 
 						<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
@@ -786,6 +792,13 @@
 													DragDrop.AllowDrop="True"
 													DragDrop.DragOver="OnThumbnailDragOver"
 													DragDrop.Drop="OnThumbnailDrop">
+													<Button.ContextMenu>
+														<ContextMenu>
+															<MenuItem Header="Open file location"
+																	Click="OnOpenThumbnailFileLocationClick"
+																	CommandParameter="{Binding}" />
+														</ContextMenu>
+													</Button.ContextMenu>
 												<Border Classes="thumb" Classes.selected="{Binding IsSelected}" Padding="3" Width="100" Height="60">
 													<Grid>
 														<Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding IsImage}" />
@@ -793,6 +806,12 @@
 															<PathIcon Data="{Binding FileTypeIconData}" Width="20" Height="20" />
 															<TextBlock Text="{Binding FileExtensionDisplay}" FontSize="9" HorizontalAlignment="Center" />
 														</StackPanel>
+														<Border IsVisible="{Binding IsRendering}" Background="#AA000000" CornerRadius="3">
+															<StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+																<ProgressBar Width="56" Height="4" IsIndeterminate="True" />
+																<TextBlock Text="Rendering..." FontSize="9" Foreground="White" HorizontalAlignment="Center" />
+															</StackPanel>
+														</Border>
 														<Button Classes="close-btn" Click="OnDeleteImageClick" CommandParameter="{Binding}"
 																HorizontalAlignment="Right" VerticalAlignment="Top"
 																Width="18" Height="18" Padding="0">
@@ -856,6 +875,45 @@
 								   VerticalAlignment="Center" />
 
 				<!-- Quick exit button for full screen -->
+				<Button Click="OnCloseFullscreenEditorClick"
+						VerticalAlignment="Top" HorizontalAlignment="Right"
+						Classes="wnd-btn" Width="40" Height="40" Margin="10">
+					<PathIcon Data="{StaticResource Icon.Close}" Width="14" Height="14" Foreground="{DynamicResource MutedBrush}"/>
+				</Button>
+			</Grid>
+
+			<!-- ══════════════ FULLSCREEN MEDIA PREVIEW ══════════════ -->
+			<Grid Grid.Row="1" Grid.RowSpan="2"
+				  IsVisible="{Binding IsMediaPreviewVisible}"
+				  Background="{DynamicResource BgBrush}"
+				  ZIndex="1001">
+				<Border HorizontalAlignment="Center"
+						VerticalAlignment="Center"
+						Background="{DynamicResource SurfaceBrush}"
+						BorderBrush="{DynamicResource BorderBrush}"
+						BorderThickness="1"
+						CornerRadius="8"
+						Padding="14"
+						MaxWidth="1180"
+						MaxHeight="860"
+						Margin="20">
+					<Grid RowDefinitions="Auto,*" Width="1100" Height="800">
+						<TextBlock Text="{Binding MediaPreviewTitle}"
+								   FontSize="14"
+								   FontWeight="SemiBold"
+								   Foreground="{DynamicResource TextBrush}"
+								   Margin="0,0,0,10" />
+						<Border Grid.Row="1"
+								Background="{DynamicResource BgBrush}"
+								BorderBrush="{DynamicResource BorderBrush}"
+								BorderThickness="1"
+								CornerRadius="6"
+								Padding="8">
+							<Image Source="{Binding MediaPreviewImage}" Stretch="Uniform" />
+						</Border>
+					</Grid>
+				</Border>
+
 				<Button Click="OnCloseFullscreenEditorClick"
 						VerticalAlignment="Top" HorizontalAlignment="Right"
 						Classes="wnd-btn" Width="40" Height="40" Margin="10">
