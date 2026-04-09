@@ -641,8 +641,24 @@
 												 IsEnabled="{Binding ReplyToMattermostThreadId}"
 												 HorizontalAlignment="Stretch"
 												 Height="32"
+												 Width="450"
 												 FontSize="11"
 												 Watermark="Nhập post id hoặc link thread Mattermost" />
+											 <Border Margin="8,0,0,0"
+													 BorderBrush="{DynamicResource BorderBrush}"
+													 BorderThickness="1"
+													 CornerRadius="4"
+													Padding="8,6"
+													 IsVisible="{Binding ReplyToMattermostThreadId}"
+													 MinHeight="32"
+													 MaxHeight="76">
+												 <TextBlock Text="{Binding MattermostThreadPreviewText}"
+															TextWrapping="NoWrap"
+													   TextTrimming="CharacterEllipsis"
+											   Width="500"
+														FontSize="11"
+														VerticalAlignment="Center" />
+											 </Border>
 
 									</StackPanel>
 									<StackPanel Orientation="Horizontal" Margin="0,8,0,0">

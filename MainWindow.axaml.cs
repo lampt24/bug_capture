@@ -22,6 +22,7 @@ using Redmine.Net.Api;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.Text;
+using System.Threading;
 
 namespace BugCapture
 {
@@ -103,6 +104,8 @@ namespace BugCapture
         private string _mattermostChannelTargetsText = string.Empty;
         private string _mattermostMentionText = string.Empty;
         private string _mattermostThreadId = string.Empty;
+        private string _mattermostThreadPreviewText = string.Empty;
+        private int _mattermostThreadPreviewRequestVersion;
         private ObservableCollection<string> _mattermostMentionSuggestions = new();
         private readonly Dictionary<string, List<MattermostUserInfo>> _mattermostChannelMembersCache = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, List<MattermostUserInfo>> _mattermostTeamMembersCache = new(StringComparer.OrdinalIgnoreCase);
@@ -740,6 +743,12 @@ namespace BugCapture
                         MattermostMentionSuggestions.Clear();
                         OnPropertyChanged(nameof(IsMattermostMentionSuggestionVisible));
                     }
+
+                    _ = RefreshMattermostThreadPreviewAsync();
+                }
+                else
+                {
+                    MattermostThreadPreviewText = string.Empty;
                 }
 
                 SaveMattermostSelections();
@@ -802,7 +811,71 @@ namespace BugCapture
 
                 _mattermostThreadId = value;
                 OnPropertyChanged(nameof(MattermostThreadId));
+                _ = RefreshMattermostThreadPreviewAsync();
                 SaveMattermostSelections();
+            }
+        }
+
+        public string MattermostThreadPreviewText
+        {
+            get => _mattermostThreadPreviewText;
+            private set
+            {
+                if (string.Equals(_mattermostThreadPreviewText, value, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _mattermostThreadPreviewText = value;
+                OnPropertyChanged(nameof(MattermostThreadPreviewText));
+            }
+        }
+
+        private async Task RefreshMattermostThreadPreviewAsync()
+        {
+            var currentVersion = Interlocked.Increment(ref _mattermostThreadPreviewRequestVersion);
+
+            if (!ReplyToMattermostThreadId)
+            {
+                MattermostThreadPreviewText = string.Empty;
+                return;
+            }
+
+            var postId = ExtractMattermostPostIdFromInput(MattermostThreadId);
+            if (string.IsNullOrWhiteSpace(postId))
+            {
+                MattermostThreadPreviewText = string.Empty;
+                return;
+            }
+
+            if (postId.Length != 26)
+            {
+                MattermostThreadPreviewText = "Nhập post id Mattermost hợp lệ (26 ký tự) hoặc URL chứa id.";
+                return;
+            }
+
+            MattermostThreadPreviewText = "Đang tải nội dung thread...";
+
+            try
+            {
+                var preview = await _mattermostService.GetThreadPreviewAsync(postId);
+                if (currentVersion != _mattermostThreadPreviewRequestVersion)
+                {
+                    return;
+                }
+
+                MattermostThreadPreviewText = string.IsNullOrWhiteSpace(preview)
+                    ? "Thread không có nội dung text."
+                    : preview;
+            }
+            catch (Exception)
+            {
+                if (currentVersion != _mattermostThreadPreviewRequestVersion)
+                {
+                    return;
+                }
+
+                MattermostThreadPreviewText = "Không có quyền thao tác với thread này...";
             }
         }
 

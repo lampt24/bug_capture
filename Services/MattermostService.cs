@@ -192,6 +192,19 @@ namespace BugCapture.Services
       await CreatePostAsync(channelId, message, fileIds, options);
     }
 
+    public async Task<string> GetThreadPreviewAsync(string postOrThreadId)
+    {
+      EnsureConfigured();
+
+      if (string.IsNullOrWhiteSpace(postOrThreadId))
+      {
+        return string.Empty;
+      }
+
+      var post = await GetPostAsync(postOrThreadId.Trim());
+      return post.Message?.Trim() ?? string.Empty;
+    }
+
     public async Task<string> GetCurrentUserMentionAsync()
     {
       await EnsureCurrentUserIdAsync();
@@ -573,6 +586,9 @@ namespace BugCapture.Services
 
       [JsonPropertyName("root_id")]
       public string? RootId { get; set; }
+
+      [JsonPropertyName("message")]
+      public string? Message { get; set; }
     }
 
     private class MattermostPostPropsDto
