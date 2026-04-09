@@ -21,6 +21,7 @@ using Redmine.Net.Api.Types;
 using Redmine.Net.Api;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using System.Text;
 
 namespace BugCapture
 {
@@ -87,6 +88,12 @@ namespace BugCapture
         private bool _isMattermostReady;
         private string _mattermostConnectionStatus = string.Empty;
         private ObservableCollection<MattermostChannelInfo> _mattermostChannels = new();
+        private ObservableCollection<MattermostTeamOption> _mattermostTeams = new();
+        private MattermostTeamOption? _selectedMattermostTeam;
+        private ObservableCollection<MattermostChannelInfo> _mattermostChannelsByTeam = new();
+        private MattermostChannelInfo? _selectedMattermostChannel;
+        private ObservableCollection<MattermostUserInfo> _mattermostUsersByTeam = new();
+        private MattermostUserInfo? _selectedMattermostUser;
         private ObservableCollection<MattermostChannelTreeItem> _mattermostChannelTreeItems = new();
         private MattermostChannelTreeItem? _selectedMattermostChannelTreeItem;
         private ObservableCollection<MattermostUserInfo> _mattermostUsers = new();
@@ -98,6 +105,7 @@ namespace BugCapture
         private string _mattermostThreadId = string.Empty;
         private ObservableCollection<string> _mattermostMentionSuggestions = new();
         private readonly Dictionary<string, List<MattermostUserInfo>> _mattermostChannelMembersCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, List<MattermostUserInfo>> _mattermostTeamMembersCache = new(StringComparer.OrdinalIgnoreCase);
         private bool _isRefreshingMentionSuggestions;
         private bool _isApplyingMentionSuggestion;
         private bool _isApplyingMattermostSettings;
@@ -509,6 +517,91 @@ namespace BugCapture
         {
             get => _mattermostChannels;
             set { _mattermostChannels = value; OnPropertyChanged(nameof(MattermostChannels)); }
+        }
+
+        public ObservableCollection<MattermostTeamOption> MattermostTeams
+        {
+            get => _mattermostTeams;
+            set { _mattermostTeams = value; OnPropertyChanged(nameof(MattermostTeams)); }
+        }
+
+        public MattermostTeamOption? SelectedMattermostTeam
+        {
+            get => _selectedMattermostTeam;
+            set
+            {
+                if (ReferenceEquals(_selectedMattermostTeam, value))
+                {
+                    return;
+                }
+
+                _selectedMattermostTeam = value;
+                OnPropertyChanged(nameof(SelectedMattermostTeam));
+                RefreshMattermostChannelsByTeam();
+                _ = RefreshMattermostUsersByTeamAsync();
+                SaveMattermostSelections();
+            }
+        }
+
+        public ObservableCollection<MattermostChannelInfo> MattermostChannelsByTeam
+        {
+            get => _mattermostChannelsByTeam;
+            set { _mattermostChannelsByTeam = value; OnPropertyChanged(nameof(MattermostChannelsByTeam)); }
+        }
+
+        public MattermostChannelInfo? SelectedMattermostChannel
+        {
+            get => _selectedMattermostChannel;
+            set
+            {
+                if (ReferenceEquals(_selectedMattermostChannel, value))
+                {
+                    return;
+                }
+
+                _selectedMattermostChannel = value;
+                OnPropertyChanged(nameof(SelectedMattermostChannel));
+
+                if (value != null)
+                {
+                    MattermostChannelTargetsText = value.Reference;
+                    var matchedTeam = MattermostTeams.FirstOrDefault(t => string.Equals(t.Key, ResolveMattermostTeamKey(value), StringComparison.OrdinalIgnoreCase));
+                    if (matchedTeam != null && !ReferenceEquals(SelectedMattermostTeam, matchedTeam))
+                    {
+                        SelectedMattermostTeam = matchedTeam;
+                    }
+                }
+
+                SaveMattermostSelections();
+            }
+        }
+
+        public ObservableCollection<MattermostUserInfo> MattermostUsersByTeam
+        {
+            get => _mattermostUsersByTeam;
+            set { _mattermostUsersByTeam = value; OnPropertyChanged(nameof(MattermostUsersByTeam)); }
+        }
+
+        public MattermostUserInfo? SelectedMattermostUser
+        {
+            get => _selectedMattermostUser;
+            set
+            {
+                if (ReferenceEquals(_selectedMattermostUser, value))
+                {
+                    return;
+                }
+
+                _selectedMattermostUser = value;
+                OnPropertyChanged(nameof(SelectedMattermostUser));
+
+                if (value != null)
+                {
+                    AppendMattermostMention(value);
+                    _selectedMattermostUser = null;
+                    OnPropertyChanged(nameof(SelectedMattermostUser));
+                }
+            }
         }
 
         public ObservableCollection<MattermostChannelTreeItem> MattermostChannelTreeItems
@@ -1187,6 +1280,7 @@ namespace BugCapture
         {
             MattermostMentionSuggestions.Clear();
             _mattermostChannelMembersCache.Clear();
+            _mattermostTeamMembersCache.Clear();
 
             if (string.IsNullOrWhiteSpace(MattermostServerUrl) || string.IsNullOrWhiteSpace(MattermostAccessToken))
             {
@@ -1194,6 +1288,11 @@ namespace BugCapture
                 MattermostConnectionStatus = "Mattermost chưa được cấu hình.";
                 SubmitToMattermost = false;
                 MattermostChannels = new ObservableCollection<MattermostChannelInfo>();
+                MattermostTeams = new ObservableCollection<MattermostTeamOption>();
+                SelectedMattermostTeam = null;
+                MattermostChannelsByTeam = new ObservableCollection<MattermostChannelInfo>();
+                SelectedMattermostChannel = null;
+                MattermostUsersByTeam = new ObservableCollection<MattermostUserInfo>();
                 MattermostChannelTreeItems = new ObservableCollection<MattermostChannelTreeItem>();
                 MattermostUsers = new ObservableCollection<MattermostUserInfo>();
                 SendToMattermostChannels = false;
@@ -1222,8 +1321,20 @@ namespace BugCapture
                 }
 
                 MattermostChannels = new ObservableCollection<MattermostChannelInfo>(channels);
+                MattermostTeams = BuildMattermostTeamItems(channels);
+                if (MattermostTeams.Count > 0)
+                {
+                    SelectedMattermostTeam = MattermostTeams[0];
+                }
+                else
+                {
+                    SelectedMattermostTeam = null;
+                }
+
+                RefreshMattermostChannelsByTeam();
                 MattermostChannelTreeItems = BuildMattermostChannelTreeItems(channels);
                 MattermostUsers = new ObservableCollection<MattermostUserInfo>(users);
+                await RefreshMattermostUsersByTeamAsync();
                 ApplyMattermostSelections();
                 IsMattermostReady = true;
                 MattermostConnectionStatus = "Mattermost connected.";
@@ -1235,6 +1346,11 @@ namespace BugCapture
                 MattermostConnectionStatus = "Mattermost không kết nối được hoặc access token không hợp lệ.";
                 SubmitToMattermost = false;
                 MattermostChannels = new ObservableCollection<MattermostChannelInfo>();
+                MattermostTeams = new ObservableCollection<MattermostTeamOption>();
+                SelectedMattermostTeam = null;
+                MattermostChannelsByTeam = new ObservableCollection<MattermostChannelInfo>();
+                SelectedMattermostChannel = null;
+                MattermostUsersByTeam = new ObservableCollection<MattermostUserInfo>();
                 MattermostChannelTreeItems = new ObservableCollection<MattermostChannelTreeItem>();
                 MattermostUsers = new ObservableCollection<MattermostUserInfo>();
                 SendToMattermostChannels = false;
@@ -1272,6 +1388,161 @@ namespace BugCapture
             }
 
             return items;
+        }
+
+        private static ObservableCollection<MattermostTeamOption> BuildMattermostTeamItems(List<MattermostChannelInfo> channels)
+        {
+            var items = channels
+                .Select(c => new MattermostTeamOption
+                {
+                    Key = ResolveMattermostTeamKey(c),
+                    DisplayName = ResolveMattermostTeamDisplayName(c)
+                })
+                .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+                .GroupBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .OrderBy(x => x.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return new ObservableCollection<MattermostTeamOption>(items);
+        }
+
+        private static string ResolveMattermostTeamKey(MattermostChannelInfo channel)
+        {
+            if (!string.IsNullOrWhiteSpace(channel.TeamId))
+            {
+                return channel.TeamId.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(channel.TeamName))
+            {
+                return channel.TeamName.Trim();
+            }
+
+            return (channel.TeamDisplayName ?? string.Empty).Trim();
+        }
+
+        private static string ResolveMattermostTeamDisplayName(MattermostChannelInfo channel)
+        {
+            if (!string.IsNullOrWhiteSpace(channel.TeamDisplayName))
+            {
+                return channel.TeamDisplayName.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(channel.TeamName))
+            {
+                return channel.TeamName.Trim();
+            }
+
+            return (channel.TeamId ?? string.Empty).Trim();
+        }
+
+        private void RefreshMattermostChannelsByTeam()
+        {
+            var selectedTeamKey = SelectedMattermostTeam?.Key ?? string.Empty;
+            var channels = MattermostChannels
+                .Where(c => string.IsNullOrWhiteSpace(selectedTeamKey) || string.Equals(ResolveMattermostTeamKey(c), selectedTeamKey, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            MattermostChannelsByTeam = new ObservableCollection<MattermostChannelInfo>(channels);
+
+            if (!string.IsNullOrWhiteSpace(MattermostChannelTargetsText))
+            {
+                var matched = ResolveMattermostChannels(MattermostChannelTargetsText)
+                    .FirstOrDefault(c => channels.Any(x => string.Equals(x.Id, c.Id, StringComparison.OrdinalIgnoreCase)));
+                if (matched != null)
+                {
+                    SelectedMattermostChannel = matched;
+                    return;
+                }
+            }
+
+            if (_selectedMattermostChannel == null || channels.All(c => !string.Equals(c.Id, _selectedMattermostChannel.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                SelectedMattermostChannel = channels.FirstOrDefault();
+            }
+        }
+
+        private async Task RefreshMattermostUsersByTeamAsync()
+        {
+            var users = await GetUsersBySelectedTeamAsync();
+            MattermostUsersByTeam = new ObservableCollection<MattermostUserInfo>(users.OrderBy(u => u.Username, StringComparer.OrdinalIgnoreCase));
+        }
+
+        private async Task<List<MattermostUserInfo>> GetUsersBySelectedTeamAsync()
+        {
+            var teamKey = SelectedMattermostTeam?.Key ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(teamKey))
+            {
+                return MattermostUsers.ToList();
+            }
+
+            if (_mattermostTeamMembersCache.TryGetValue(teamKey, out var cachedUsers))
+            {
+                return cachedUsers;
+            }
+
+            var teamChannels = MattermostChannels
+                .Where(c => string.Equals(ResolveMattermostTeamKey(c), teamKey, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (teamChannels.Count == 0 || !_mattermostService.IsConfigured)
+            {
+                return MattermostUsers.ToList();
+            }
+
+            var usersById = new Dictionary<string, MattermostUserInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var channel in teamChannels)
+            {
+                try
+                {
+                    var members = await _mattermostService.GetChannelMembersAsync(channel.Id);
+                    foreach (var member in members)
+                    {
+                        if (!string.IsNullOrWhiteSpace(member.Id))
+                        {
+                            usersById[member.Id] = member;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.WriteException(ex, $"Mattermost team member fetch failed | Team={teamKey} | ChannelId={channel.Id}");
+                }
+            }
+
+            var resolvedUsers = usersById.Values
+                .OrderBy(u => u.Username, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (resolvedUsers.Count == 0)
+            {
+                resolvedUsers = MattermostUsers.ToList();
+            }
+
+            _mattermostTeamMembersCache[teamKey] = resolvedUsers;
+            return resolvedUsers;
+        }
+
+        private void AppendMattermostMention(MattermostUserInfo user)
+        {
+            if (user == null || string.IsNullOrWhiteSpace(user.MentionHandle))
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(MattermostMentionText))
+            {
+                MattermostMentionText = user.MentionHandle;
+                return;
+            }
+
+            var existingMentions = ParseMentionHandles(MattermostMentionText);
+            if (!existingMentions.Contains(user.MentionHandle, StringComparer.OrdinalIgnoreCase))
+            {
+                MattermostMentionText = (MattermostMentionText + " " + user.MentionHandle).Trim();
+            }
         }
 
         private void EnsureDefaultMattermostMention()
@@ -1399,7 +1670,7 @@ namespace BugCapture
         {
             if (!TryResolveSingleMattermostChannel(MattermostChannelTargetsText, out var selectedChannel))
             {
-                return MattermostUsers.ToList();
+                return await GetUsersBySelectedTeamAsync();
             }
 
             if (_mattermostChannelMembersCache.TryGetValue(selectedChannel.Id, out var cachedMembers))
@@ -1469,6 +1740,24 @@ namespace BugCapture
                 if (!string.IsNullOrWhiteSpace(savedReference))
                 {
                     MattermostChannelTargetsText = savedReference;
+
+                    var savedChannel = ResolveMattermostChannels(savedReference).FirstOrDefault();
+                    if (savedChannel != null)
+                    {
+                        var savedTeam = MattermostTeams
+                            .FirstOrDefault(t => string.Equals(t.Key, ResolveMattermostTeamKey(savedChannel), StringComparison.OrdinalIgnoreCase));
+                        if (savedTeam != null)
+                        {
+                            SelectedMattermostTeam = savedTeam;
+                        }
+
+                        var currentTeamChannels = MattermostChannelsByTeam.Any() ? MattermostChannelsByTeam : MattermostChannels;
+                        SelectedMattermostChannel = currentTeamChannels.FirstOrDefault(c => string.Equals(c.Id, savedChannel.Id, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+                else if (MattermostTeams.Count > 0 && SelectedMattermostTeam == null)
+                {
+                    SelectedMattermostTeam = MattermostTeams[0];
                 }
 
                 if (settings.MattermostReplyToThreadId)
@@ -1488,6 +1777,14 @@ namespace BugCapture
             {
                 _isApplyingMattermostSettings = false;
             }
+
+            _ = RefreshMattermostUsersByTeamAsync();
+        }
+
+        public sealed class MattermostTeamOption
+        {
+            public string Key { get; set; } = string.Empty;
+            public string DisplayName { get; set; } = string.Empty;
         }
 
         public void OnMattermostMentionSuggestionSelected(object? sender, SelectionChangedEventArgs e)
@@ -1566,18 +1863,172 @@ namespace BugCapture
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (requested.Count == 0)
+            var expanded = ExpandMattermostChannelTokens(requested)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (expanded.Count == 0)
             {
                 return new List<MattermostChannelInfo>();
             }
 
             return MattermostChannels
-                .Where(c => requested.Any(token =>
-                    string.Equals(token, c.Id, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(token.TrimStart('#'), c.Name, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(token, c.Reference, StringComparison.OrdinalIgnoreCase)
-                    || (!string.IsNullOrWhiteSpace(c.DisplayName) && string.Equals(token, c.DisplayName, StringComparison.OrdinalIgnoreCase))))
+                .Where(c => expanded.Any(token => IsChannelTokenMatch(token, c)))
                 .ToList();
+        }
+
+        private static bool IsChannelTokenMatch(string token, MattermostChannelInfo channel)
+        {
+            if (channel == null || string.IsNullOrWhiteSpace(token))
+            {
+                return false;
+            }
+
+            var trimmedToken = token.Trim();
+            var tokenWithoutHash = trimmedToken.TrimStart('#');
+            var normalizedToken = NormalizeChannelToken(tokenWithoutHash);
+            var normalizedChannelName = NormalizeChannelToken(channel.Name);
+            var normalizedDisplayName = NormalizeChannelToken(channel.DisplayName);
+            var normalizedReference = NormalizeChannelToken(channel.Reference);
+
+            if (string.Equals(trimmedToken, channel.Id, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tokenWithoutHash, channel.Name, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(trimmedToken, channel.Reference, StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrWhiteSpace(channel.DisplayName) && string.Equals(trimmedToken, channel.DisplayName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(normalizedToken))
+            {
+                if (!string.IsNullOrWhiteSpace(normalizedChannelName) && string.Equals(normalizedToken, normalizedChannelName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(normalizedDisplayName) && string.Equals(normalizedToken, normalizedDisplayName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(normalizedReference) && string.Equals(normalizedToken, normalizedReference, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string NormalizeChannelToken(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var lowered = value.Trim().TrimStart('#').ToLowerInvariant();
+            return Regex.Replace(lowered, @"[^a-z0-9]", string.Empty);
+        }
+
+        private static List<string> ExpandMattermostChannelTokens(IEnumerable<string> requested)
+        {
+            var expanded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var token in requested)
+            {
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    continue;
+                }
+
+                var normalizedToken = token.Trim();
+                if (normalizedToken.Length == 0)
+                {
+                    continue;
+                }
+
+                normalizedToken = Uri.UnescapeDataString(normalizedToken);
+
+                expanded.Add(normalizedToken);
+                expanded.Add(normalizedToken.TrimStart('#'));
+
+                foreach (var candidate in ExtractChannelTokensFromPath(normalizedToken))
+                {
+                    if (string.IsNullOrWhiteSpace(candidate))
+                    {
+                        continue;
+                    }
+
+                    expanded.Add(candidate);
+                    expanded.Add(candidate.TrimStart('#'));
+                }
+            }
+
+            return expanded.ToList();
+        }
+
+        private static IEnumerable<string> ExtractChannelTokensFromPath(string input)
+        {
+            var output = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var value = input?.Trim() ?? string.Empty;
+            if (value.Length == 0)
+            {
+                return output;
+            }
+
+            if (Uri.TryCreate(value, UriKind.Absolute, out var absoluteUri))
+            {
+                value = absoluteUri.AbsolutePath ?? string.Empty;
+            }
+            else
+            {
+                if (Uri.TryCreate("https://placeholder.local" + (value.StartsWith("/", StringComparison.Ordinal) ? value : "/" + value), UriKind.Absolute, out var relativeUri))
+                {
+                    value = relativeUri.AbsolutePath ?? value;
+                }
+            }
+
+            var parts = value
+                .Split('/', StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            if (parts.Count == 0)
+            {
+                return output;
+            }
+
+            foreach (var part in parts)
+            {
+                output.Add(part);
+            }
+
+            var channelsIndex = parts.FindIndex(x => string.Equals(x, "channels", StringComparison.OrdinalIgnoreCase));
+            if (channelsIndex >= 0 && channelsIndex + 1 < parts.Count)
+            {
+                output.Add(parts[channelsIndex + 1]);
+                if (channelsIndex - 1 >= 0)
+                {
+                    output.Add(parts[channelsIndex - 1] + "/channels/" + parts[channelsIndex + 1]);
+                }
+            }
+
+            if (parts.Count >= 2)
+            {
+                var last = parts[^1];
+                var previous = parts[^2];
+                output.Add(last);
+
+                if (!string.Equals(previous, "channels", StringComparison.OrdinalIgnoreCase))
+                {
+                    output.Add(previous + "/" + last);
+                    output.Add(previous + "/channels/" + last);
+                }
+            }
+
+            return output;
         }
 
         private bool TryResolveSingleMattermostChannel(string input, out MattermostChannelInfo channel)
@@ -1887,6 +2338,12 @@ namespace BugCapture
                 return;
             }
 
+            if (!await ShowSubmissionConfirmationDialogAsync())
+            {
+                StatusText = "Đã hủy thao tác gửi.";
+                return;
+            }
+
             ClearLastCreatedIssue();
             IsSubmitting = true;
             StatusText = SubmitToRedmine ? "Uploading attachments..." : "Preparing message...";
@@ -1941,7 +2398,7 @@ namespace BugCapture
                     }
                 }
 
-                var mattermostDescription = BugDescription.Trim();
+                var mattermostDescription = BuildMattermostDescriptionForNotification(BugDescription);
                 var redmineDescription = BugDescription;
                 var issueSubject = string.IsNullOrWhiteSpace(BugPrefix)
                     ? BugTitle
@@ -2045,6 +2502,12 @@ namespace BugCapture
                         : "No Mattermost target resolved.";
                 }
 
+                var shouldClearForm = SubmitToRedmine || (SubmitToMattermost && mattermostSent);
+                if (!shouldClearForm)
+                {
+                    return;
+                }
+
                 // Optional: Clear form
                 BugTitle = string.Empty;
                 BugDescription = string.Empty;
@@ -2074,6 +2537,188 @@ namespace BugCapture
             }
         }
 
+        private async Task<bool> ShowSubmissionConfirmationDialogAsync()
+        {
+            var titleText = new TextBlock
+            {
+                Text = "Bạn có chắc muốn tiếp tục không?",
+                FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var contentPanel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Vertical,
+                Spacing = 4
+            };
+            BuildSubmissionConfirmationContent(contentPanel);
+
+            var scrollViewer = new ScrollViewer
+            {
+                Content = contentPanel,
+                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch
+            };
+
+            var confirmButton = new Button
+            {
+                Content = "Tiếp tục",
+                MinWidth = 100,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom
+            };
+
+            var cancelButton = new Button
+            {
+                Content = "Hủy",
+                MinWidth = 100,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom
+            };
+
+            var buttonRow = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 8,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+            buttonRow.Children.Add(cancelButton);
+            buttonRow.Children.Add(confirmButton);
+
+            var root = new Grid
+            {
+                Margin = new Thickness(14, 12, 14, 12),
+                RowDefinitions = new RowDefinitions("Auto,*,Auto")
+            };
+            Grid.SetRow(titleText, 0);
+            Grid.SetRow(scrollViewer, 1);
+            Grid.SetRow(buttonRow, 2);
+
+            root.Children.Add(titleText);
+            root.Children.Add(scrollViewer);
+            root.Children.Add(buttonRow);
+
+            var dialog = new Window
+            {
+                Title = "Xác nhận gửi",
+                Width = 520,
+                Height = 300,
+                MinWidth = 460,
+                MinHeight = 300,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = false,
+                Content = root
+            };
+
+            bool? result = null;
+            confirmButton.Click += (_, _) =>
+            {
+                result = true;
+                dialog.Close();
+            };
+
+            cancelButton.Click += (_, _) =>
+            {
+                result = false;
+                dialog.Close();
+            };
+
+            dialog.Closed += (_, _) =>
+            {
+                result ??= false;
+            };
+
+            await dialog.ShowDialog(this);
+            return result == true;
+        }
+
+        private void BuildSubmissionConfirmationContent(Panel contentPanel)
+        {
+            contentPanel.Children.Clear();
+
+            void AppendLine(string text)
+            {
+                contentPanel.Children.Add(new TextBlock { Text = text });
+            }
+
+            void AppendSectionTitle(string title)
+            {
+                contentPanel.Children.Add(new TextBlock
+                {
+                    Text = title,
+                    FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                    Margin = new Thickness(0, 6, 0, 2)
+                });
+            }
+
+            void AppendLabelValue(string label, string value)
+            {
+                var block = new TextBlock();
+                block.Inlines.Add(new Avalonia.Controls.Documents.Run("- " + label + ": "));
+                block.Inlines.Add(new Avalonia.Controls.Documents.Run(value)
+                {
+                    FontWeight = Avalonia.Media.FontWeight.Bold
+                });
+                contentPanel.Children.Add(block);
+            }
+
+            if (SubmitToRedmine)
+            {
+                var projectName = SelectedProject?.Name ?? "(chưa chọn)";
+                var trackerName = SelectedTracker?.Name ?? "(chưa chọn)";
+                var assigneeName = SelectedMembership?.User?.Name ?? "(không gán)";
+
+                AppendSectionTitle("[Redmine]");
+                AppendLabelValue("Project", projectName);
+                AppendLabelValue("Tracker", trackerName);
+                AppendLabelValue("Assignee", assigneeName);
+                AppendLine(string.Empty);
+            }
+
+            if (SubmitToMattermost)
+            {
+                AppendSectionTitle("[Mattermost]");
+                var hasAnyMattermostMode = false;
+
+                if (SendToMattermostChannels)
+                {
+                    hasAnyMattermostMode = true;
+                    var channels = ResolveMattermostChannels(MattermostChannelTargetsText)
+                        .Select(c => c.Reference)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                    var channelText = channels.Count > 0
+                        ? string.Join(", ", channels)
+                        : (string.IsNullOrWhiteSpace(MattermostChannelTargetsText) ? "(chưa chọn)" : MattermostChannelTargetsText);
+                    AppendLabelValue("Channel", channelText);
+                }
+
+                if (ReplyToMattermostThreadId)
+                {
+                    hasAnyMattermostMode = true;
+                    var threadId = ExtractMattermostPostIdFromInput(MattermostThreadId);
+                    AppendLabelValue("Thread", string.IsNullOrWhiteSpace(threadId) ? "(chưa nhập)" : threadId);
+                }
+
+                if (MentionMattermostUsers)
+                {
+                    hasAnyMattermostMode = true;
+                    var members = ParseMentionHandles(MattermostMentionText);
+                    var memberText = members.Count > 0
+                        ? string.Join(", ", members)
+                        : (string.IsNullOrWhiteSpace(MattermostMentionText) ? "(chưa nhập)" : MattermostMentionText);
+                    AppendLabelValue("Member", memberText);
+                }
+
+                if (!hasAnyMattermostMode)
+                {
+                    AppendLabelValue("Target", "(chưa chọn mode gửi)");
+                }
+            }
+        }
+
         public async void OnRefreshRedmineClick(object sender, RoutedEventArgs e)
         {
             await LoadRedmineData();
@@ -2096,6 +2741,42 @@ namespace BugCapture
             }
 
             return $"Không thể upload '{fileName}'. Vui lòng kiểm tra file hoặc thử lại sau.";
+        }
+
+        private string BuildMattermostDescriptionForNotification(string description)
+        {
+            var normalizedDescription = (description ?? string.Empty).Trim();
+            var longTextFields = CustomFieldControls
+                .Where(field => field.IsLongText)
+                .Select(field => new
+                {
+                    Name = field.Field?.Name?.Trim() ?? string.Empty,
+                    Value = (field.Value?.ToString() ?? string.Empty).Trim()
+                })
+                .Where(field => !string.IsNullOrWhiteSpace(field.Value))
+                .ToList();
+
+            if (longTextFields.Count == 0)
+            {
+                return normalizedDescription;
+            }
+
+            var builder = new StringBuilder();
+            if (!string.IsNullOrWhiteSpace(normalizedDescription))
+            {
+                builder.AppendLine(normalizedDescription);
+                builder.AppendLine();
+            }
+
+            foreach (var field in longTextFields)
+            {
+                var fieldName = string.IsNullOrWhiteSpace(field.Name) ? "(Unnamed field)" : field.Name;
+                builder.AppendLine($"__{fieldName}__");
+                builder.AppendLine(field.Value);
+                builder.AppendLine();
+            }
+
+            return builder.ToString().Trim();
         }
 
         private async Task<bool> SendMattermostNotificationsAsync(int issueId, string issueSubject, string mattermostDescription, List<string> attachmentFilePaths)
@@ -2128,6 +2809,16 @@ namespace BugCapture
             else if (SendToMattermostChannels)
             {
                 _logger.WriteLine($"[Mattermost] Channel send requested but no channel matched input='{MattermostChannelTargetsText}'.");
+                var debugTokens = ExpandMattermostChannelTokens(new[] { MattermostChannelTargetsText ?? string.Empty });
+                _logger.WriteLine($"[Mattermost] Channel parse tokens: {string.Join(", ", debugTokens.Take(12))}");
+
+                if (MattermostChannels.Count > 0)
+                {
+                    var sampleChannels = string.Join(", ", MattermostChannels
+                        .Take(12)
+                        .Select(c => $"{c.Reference}|{c.Name}|{c.DisplayName}|{c.Id}"));
+                    _logger.WriteLine($"[Mattermost] Available channels sample: {sampleChannels}");
+                }
             }
 
             string redmineIssueUrl = string.Empty;

@@ -417,7 +417,7 @@
 									  SelectedItem="{Binding SelectedProjectItem}">
 								<ComboBox.ItemTemplate>
 									<DataTemplate>
-											<TextBlock Text="{Binding DisplayName}" />
+										<TextBlock Text="{Binding DisplayName}" />
 									</DataTemplate>
 								</ComboBox.ItemTemplate>
 							</ComboBox>
@@ -526,9 +526,9 @@
 						<ItemsControl.ItemTemplate>
 							<DataTemplate x:DataType="models:CustomFieldControlViewModel">
 								<Grid ColumnDefinitions="Auto,*" Margin="0,5,0,0">
-									<TextBlock Grid.Column="0" Classes="card-label" 
-											   Text="{Binding DisplayName}" 
-											   VerticalAlignment="Center" 
+									<TextBlock Grid.Column="0" Classes="card-label"
+											   Text="{Binding DisplayName}"
+											   VerticalAlignment="Center"
 											   TextWrapping="Wrap"
 												 MinWidth="130"
 											   Margin="0,0,12,0" />
@@ -587,68 +587,117 @@
 					<Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1" Padding="0,8" Margin="0,0,0,8">
 						<Grid ColumnDefinitions="100,*" ColumnSpacing="12">
 							<TextBlock Grid.Column="0" Classes="card-label" Text="MATTERMOST" Width="100" VerticalAlignment="Top" Margin="0,8,0,0" />
-							<Grid Grid.Column="1" ColumnDefinitions="Auto,2*,Auto,2*,Auto,2*" RowDefinitions="Auto" ColumnSpacing="10" RowSpacing="6">
-								<RadioButton Grid.Row="0" Grid.Column="0" Content="TO CHANNEL"
+							<Grid Grid.Column="1" ColumnDefinitions="Auto,1.5*,1.8*,Auto,1.8*,Auto,2.4*" RowDefinitions="Auto" ColumnSpacing="10" RowSpacing="6">
+								<StackPanel Orientation="Vertical">
+									<StackPanel Orientation="Horizontal">
+										<RadioButton Grid.Row="0" Grid.Column="0" Content="TO CHANNEL"
 											 IsChecked="{Binding SendToMattermostChannels}"
 											 IsEnabled="{Binding IsMattermostReady}"
 											 GroupName="MattermostSendMode"
 											 VerticalAlignment="Center"
+											 Width="150"
 											 FontSize="12" />
+										<ComboBox
+												  ItemsSource="{Binding MattermostTeams}"
+												  SelectedItem="{Binding SelectedMattermostTeam, Mode=TwoWay}"
+												  IsEnabled="{Binding IsMattermostReady}"
+												  HorizontalAlignment="Stretch"
+												  MinWidth="170"
+												  Height="32"
+												  FontSize="11"
+												  PlaceholderText="Chọn team">
+											<ComboBox.ItemTemplate>
+												<DataTemplate>
+													<TextBlock Text="{Binding DisplayName}" />
+												</DataTemplate>
+											</ComboBox.ItemTemplate>
+										</ComboBox>
+										<ComboBox Margin="4,0,0,0"
+												  ItemsSource="{Binding MattermostChannelsByTeam}"
+												  SelectedItem="{Binding SelectedMattermostChannel, Mode=TwoWay}"
+												  IsEnabled="{Binding SendToMattermostChannels}"
+												  HorizontalAlignment="Stretch"
+												  MinWidth="220"
+												  Height="32"
+												  FontSize="11"
+												  PlaceholderText="Chọn channel theo team">
+											<ComboBox.ItemTemplate>
+												<DataTemplate>
+													<TextBlock Text="{Binding DisplayText}" />
+												</DataTemplate>
+											</ComboBox.ItemTemplate>
+										</ComboBox>
+									</StackPanel>
+									<StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+										<RadioButton Grid.Row="0" Grid.Column="3" Content="TO THREAD"
+																				 IsChecked="{Binding ReplyToMattermostThreadId}"
+																					 IsEnabled="{Binding IsMattermostReady}"
+																					 GroupName="MattermostSendMode"
+																				 VerticalAlignment="Center"
+										 Width="150"
+																					 FontSize="12" />
+										<TextBox Grid.Row="0" Grid.Column="4"
+												 Text="{Binding MattermostThreadId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+												 IsEnabled="{Binding ReplyToMattermostThreadId}"
+												 HorizontalAlignment="Stretch"
+												 Height="32"
+												 FontSize="11"
+												 Watermark="Nhập post id hoặc link thread Mattermost" />
 
-								<TextBox Grid.Row="0" Grid.Column="1"
-										 Text="{Binding MattermostChannelTargetsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-										 IsEnabled="{Binding SendToMattermostChannels}"
-										 HorizontalAlignment="Stretch"
-										 MinWidth="220"
-										 Height="32"
-										 FontSize="11"
-										 Watermark="#channel-name hoặc channel-id (ví dụ: #town-square)" />
-
-								<RadioButton Grid.Row="0" Grid.Column="2" Content="TO THREAD"
-										 IsChecked="{Binding ReplyToMattermostThreadId}"
-											 IsEnabled="{Binding IsMattermostReady}"
-											 GroupName="MattermostSendMode"
+									</StackPanel>
+									<StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+										<RadioButton Grid.Row="0" Grid.Column="5" Content="TO USER"
+												 IsChecked="{Binding MentionMattermostUsers}"
+												 IsEnabled="{Binding IsMattermostReady}"
+												 GroupName="MattermostSendMode"
 											 VerticalAlignment="Center"
-											 FontSize="12" />
-								<TextBox Grid.Row="0" Grid.Column="3"
-										 Text="{Binding MattermostThreadId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-										 IsEnabled="{Binding ReplyToMattermostThreadId}"
-										 HorizontalAlignment="Stretch"
-										 Height="32"
-										 FontSize="11"
-										 Watermark="Nhập post id hoặc link thread Mattermost" />
+										 Width="150"
+												 FontSize="12" />
+										<TextBox x:Name="MattermostMentionTextBox" Grid.Column="0"
+												 Text="{Binding MattermostMentionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+												 IsEnabled="{Binding MentionMattermostUsers}"
+												 HorizontalAlignment="Stretch"
+												 Height="32"
+												 Width="350"
+												 FontSize="11"
+												 Watermark="Nhập @username..."
+												 TextChanged="OnMattermostMentionTextChanged" />
 
-								<RadioButton Grid.Row="0" Grid.Column="4" Content="TO USER"
-										 IsChecked="{Binding MentionMattermostUsers}"
-										 IsEnabled="{Binding IsMattermostReady}"
-										 GroupName="MattermostSendMode"
-										 VerticalAlignment="Center"
-										 FontSize="12" />
-								<TextBox x:Name="MattermostMentionTextBox" Grid.Row="0" Grid.Column="5"
-										 Text="{Binding MattermostMentionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-										 IsEnabled="{Binding MentionMattermostUsers}"
-										 HorizontalAlignment="Stretch"
-										 Height="32"
-										 FontSize="11"
-										 Watermark="@username1 @username2"
-										 TextChanged="OnMattermostMentionTextChanged" />
+										<ComboBox Grid.Column="1" Margin="4,0,0,0"
+												  ItemsSource="{Binding MattermostUsersByTeam}"
+												  SelectedItem="{Binding SelectedMattermostUser, Mode=TwoWay}"
+												  IsEnabled="{Binding MentionMattermostUsers}"
+												  HorizontalAlignment="Stretch"
+												  Height="32"
+												  FontSize="11"
+												  PlaceholderText="Chọn member theo team">
+											<ComboBox.ItemTemplate>
+												<DataTemplate>
+													<TextBlock Text="{Binding DisplayText}" />
+												</DataTemplate>
+											</ComboBox.ItemTemplate>
+										</ComboBox>
 
-								<Popup PlacementTarget="{Binding #MattermostMentionTextBox}"
-									   IsOpen="{Binding IsMattermostMentionSuggestionVisible}"
-									   Placement="Bottom"
-									   HorizontalOffset="0"
-									   VerticalOffset="2"
-									   IsLightDismissEnabled="True">
-									<Border Background="{DynamicResource SurfaceBrush}"
-											BorderBrush="{DynamicResource BorderBrush}"
-											BorderThickness="1"
-											Padding="4"
-											MinWidth="260">
-										<ListBox ItemsSource="{Binding MattermostMentionSuggestions}"
-												 MaxHeight="180"
-												 SelectionChanged="OnMattermostMentionSuggestionSelected" />
-									</Border>
-								</Popup>
+										<Popup PlacementTarget="{Binding #MattermostMentionTextBox}"
+											   IsOpen="{Binding IsMattermostMentionSuggestionVisible}"
+											   Placement="Bottom"
+											   HorizontalOffset="0"
+											   VerticalOffset="2"
+											   IsLightDismissEnabled="True">
+											<Border Background="{DynamicResource SurfaceBrush}"
+													BorderBrush="{DynamicResource BorderBrush}"
+													BorderThickness="1"
+													Padding="4"
+													MinWidth="260">
+												<ListBox ItemsSource="{Binding MattermostMentionSuggestions}"
+														 MaxHeight="180"
+														 SelectionChanged="OnMattermostMentionSuggestionSelected" />
+											</Border>
+										</Popup>
+
+									</StackPanel>
+								</StackPanel>
+
 							</Grid>
 						</Grid>
 					</Border>
